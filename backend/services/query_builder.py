@@ -45,7 +45,7 @@ class QueryBuilder:
         All filters are ANDed together (must clauses).
         
         Args:
-            filters: FilterCriteria object with optional category, genres, etc.
+            filters: FilterCriteria object with optional genres, platforms, etc.
             
         Returns:
             List of filter dictionaries for Elasticsearch bool query
@@ -55,21 +55,25 @@ class QueryBuilder:
 
         filter_clauses = []
 
-        # Single-value filters (exact match)
-        if filters.category:
-            filter_clauses.append({
-                "term": {"category.keyword": filters.category}
-            })
-
         # Multi-value filters (any match)
         if filters.genres:
             filter_clauses.append({
                 "terms": {"genres": filters.genres}
             })
 
+        if filters.game_modes:
+            filter_clauses.append({
+                "terms": {"game_modes": filters.game_modes}
+            })
+
         if filters.platforms:
             filter_clauses.append({
                 "terms": {"platforms": filters.platforms}
+            })
+
+        if filters.player_perspectives:
+            filter_clauses.append({
+                "terms": {"player_perspectives": filters.player_perspectives}
             })
 
         if filters.themes:

@@ -6,6 +6,7 @@ from models.search import (
     GameResult,
     FilterCriteria,
     ErrorResponse,
+    FiltersResponse,
 )
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "GameResult",
     "FilterCriteria",
     "ErrorResponse",
+    "FiltersResponse",
 ]

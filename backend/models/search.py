@@ -36,9 +36,10 @@ class FilterCriteria(BaseModel):
     Optional filtering criteria to narrow down search results.
     All filters are ANDed together.
     """
-    category: Optional[str] = Field(None, description="Filter by category (e.g., 'main')")
     genres: Optional[List[str]] = Field(None, description="Filter by any of these genres")
+    game_modes: Optional[List[str]] = Field(None, description="Filter by any of these game modes")
     platforms: Optional[List[str]] = Field(None, description="Filter by any of these platforms")
+    player_perspectives: Optional[List[str]] = Field(None, description="Filter by any of these player perspectives")
     themes: Optional[List[str]] = Field(None, description="Filter by any of these themes")
     release_date: Optional[DateRangeFilter] = Field(None, description="Filter by release date range")
     rating: Optional[RatingRangeFilter] = Field(None, description="Filter by rating range")
@@ -57,8 +58,8 @@ class SearchRequest(BaseModel):
             ],
             "size": 10,
             "filters": {
-                "category": "main",
-                "genres": ["Action"]
+                "genres": ["Action"],
+                "platforms": ["PC"]
             }
         }
     """
@@ -118,3 +119,24 @@ class ErrorResponse(BaseModel):
     detail: str = Field(..., description="Error message")
     status_code: int = Field(..., description="HTTP status code")
     timestamp: str = Field(..., description="ISO timestamp of error")
+
+
+class FiltersResponse(BaseModel):
+    """
+    Response body containing all available filter values.
+    Each field contains a sorted list of unique values that can be used for filtering.
+    
+    Example:
+        {
+            "genres": ["Action", "Adventure", "RPG", "Strategy"],
+            "game_modes": ["Single player", "Multiplayer"],
+            "platforms": ["PC", "PlayStation", "Xbox"],
+            "player_perspectives": ["First person", "Third person"],
+            "themes": ["Fantasy", "Sci-Fi", "Historical"]
+        }
+    """
+    genres: List[str] = Field(..., description="All available genres")
+    game_modes: List[str] = Field(..., description="All available game modes")
+    platforms: List[str] = Field(..., description="All available platforms")
+    player_perspectives: List[str] = Field(..., description="All available player perspectives")
+    themes: List[str] = Field(..., description="All available themes")

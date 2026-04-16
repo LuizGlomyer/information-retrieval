@@ -7,8 +7,9 @@ from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError, NotFoundError, BadRequestError
 
 from config import ELASTICSEARCH_HOST, ELASTICSEARCH_PORT, ELASTICSEARCH_INDEX
-from models.search import SearchRequest, SearchResponse, ErrorResponse
+from models.search import SearchRequest, SearchResponse, FiltersResponse, ErrorResponse
 from services.search import SearchService
+from services.filters import FiltersService
 
 
 def validate_elasticsearch_connection() -> Elasticsearch:
@@ -92,7 +93,7 @@ def create_app() -> FastAPI:
         - `query_text`: (required) Search query string
         - `fields`: (required) List of fields to search with optional weights (default weight: 1)
         - `size`: (optional) Number of results (1-100, default: 5)
-        - `filters`: (optional) Filter by category, genres, platforms, themes, date range, rating
+        - `filters`: (optional) Filter by genres, game_modes, platforms, player_perspectives, themes, date range, rating
         
         **Example Request:**
         ```json
@@ -105,7 +106,6 @@ def create_app() -> FastAPI:
             ],
             "size": 10,
             "filters": {
-                "category": "main",
                 "genres": ["Action", "Adventure"],
                 "platforms": ["PC"]
             }
@@ -139,6 +139,56 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=400,
                 detail=f"Search error: {str(e)}"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Internal server error: {str(e)}"
+            )
+
+    @app.get(
+        "/filters",
+        response_model=FiltersResponse,
+        tags=["Filters"],
+        summary="Get Available Filter Values",
+        description="Retrieve all available filter values for the frontend"
+    )
+    async def get_filters():
+        """
+        Get all available filter values for genres, game_modes, platforms, player_perspectives, and themes.
+        
+        This endpoint returns all unique values from each filter field in the index.
+        These values can be used to populate dropdown menus or filter selections in the frontend.
+        
+        **Response:**
+        ```json
+        {
+            "genres": ["Action", "Adventure", "RPG", ...],
+            "game_modes": ["Single player", "Multiplayer", ...],
+            "platforms": ["PC", "PlayStation", "Xbox", ...],
+            "player_perspectives": ["First person", "Third person", ...],
+            "themes": ["Fantasy", "Sci-Fi", "Horror", ...]
+        }
+        ```
+        """
+        try:
+            filters_data = FiltersService.get_all_filters(
+                es_client=app.state.es_client,
+                index_name=app.state.games_index
+            )
+
+            # Convert dict to FiltersResponse model
+            return FiltersResponse(**filters_data)
+
+        except (ConnectionError, NotFoundError) as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Elasticsearch error: {str(e)}"
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to fetch filters: {str(e)}"
             )
         except Exception as e:
             raise HTTPException(

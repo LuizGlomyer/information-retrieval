@@ -116,10 +116,10 @@ Execute a dynamic search with weighted fields and optional filtering.
   ],
   "size": 10,
   "filters": {
-    "category": "main",
     "genres": ["Action", "Adventure"],
     "platforms": ["PC"],
     "themes": ["Sci-Fi"],
+    "game_modes": ["Single player"],
     "release_date": {
       "start_date": "2020-01-01",
       "end_date": "2023-12-31"
@@ -142,9 +142,10 @@ Execute a dynamic search with weighted fields and optional filtering.
 | `fields[].weight` | number | ✗ | 1 | Weight/boost factor (0.1-10) |
 | `size` | integer | ✗ | 5 | Results per page (1-100) |
 | `filters` | object | ✗ | null | Optional filtering criteria |
-| `filters.category` | string | ✗ | - | Filter by category |
 | `filters.genres` | array | ✗ | - | Filter by any of these genres |
+| `filters.game_modes` | array | ✗ | - | Filter by any of these game modes |
 | `filters.platforms` | array | ✗ | - | Filter by any of these platforms |
+| `filters.player_perspectives` | array | ✗ | - | Filter by any of these player perspectives |
 | `filters.themes` | array | ✗ | - | Filter by any of these themes |
 | `filters.release_date.start_date` | string | ✗ | - | Start date (ISO format) |
 | `filters.release_date.end_date` | string | ✗ | - | End date (ISO format) |
@@ -194,6 +195,36 @@ Execute a dynamic search with weighted fields and optional filtering.
 | `total` | integer | Total matching documents |
 | `took_ms` | integer | Query execution time (milliseconds) |
 
+### Get Available Filters
+
+```
+GET /filters
+```
+
+Retrieve all available filter values for populating frontend filter dropdowns.
+
+#### Response
+
+```json
+{
+  "genres": ["Action", "Adventure", "RPG", "Strategy", ...],
+  "game_modes": ["Single player", "Multiplayer", "Cooperative", ...],
+  "platforms": ["PC", "PlayStation", "Xbox", "Nintendo", ...],
+  "player_perspectives": ["First person", "Third person", "Top-down", ...],
+  "themes": ["Fantasy", "Sci-Fi", "Horror", "Historical", ...]
+}
+```
+
+#### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `genres` | array | All available genres |
+| `game_modes` | array | All available game modes |
+| `platforms` | array | All available platforms |
+| `player_perspectives` | array | All available player perspectives |
+| `themes` | array | All available themes |
+
 ## 📝 Examples
 
 ### Simple Search (One Field)
@@ -224,6 +255,12 @@ curl -X POST "http://localhost:8000/search" \
   }'
 ```
 
+### Get Filter Values
+
+```bash
+curl "http://localhost:8000/filters"
+```
+
 ### Search with Filters
 
 ```bash
@@ -239,6 +276,7 @@ curl -X POST "http://localhost:8000/search" \
     "filters": {
       "genres": ["Action", "RPG"],
       "platforms": ["PC", "PlayStation"],
+      "player_perspectives": ["Third person"],
       "rating": {"min_rating": 75}
     }
   }'
@@ -337,9 +375,10 @@ SEARCHABLE_FIELDS = ["name", "summary", "keywords", "themes", "category", "genre
 
 # Filterable Fields
 FILTERABLE_FIELDS = {
-    "category": "keyword",
     "genres": "keyword",
+    "game_modes": "keyword",
     "platforms": "keyword",
+    "player_perspectives": "keyword",
     "themes": "keyword",
     "release_date": "date",
     "rating": "float",
@@ -362,7 +401,10 @@ Test health check:
 ```bash
 curl http://localhost:8000/health
 ```
-
+Test get filters:
+```bash
+curl http://localhost:8000/filters
+```
 Test search:
 ```bash
 curl -X POST "http://localhost:8000/search" \
@@ -374,8 +416,14 @@ curl -X POST "http://localhost:8000/search" \
 
 ```python
 import requests
-import json
 
+# 1. Fetch available filters
+filters_response = requests.get("http://localhost:8000/filters")
+available_filters = filters_response.json()
+print("Available genres:", available_filters['genres'][:5])
+print("Available platforms:", available_filters['platforms'][:5])
+
+# 2. Execute search
 url = "http://localhost:8000/search"
 payload = {
     "query_text": "action",
@@ -383,7 +431,11 @@ payload = {
         {"field": "name", "weight": 2},
         {"field": "summary"}
     ],
-    "size": 10
+    "size": 10,
+    "filters": {
+        "genres": ["Action"],
+        "platforms": ["PC"]
+    }
 }
 
 response = requests.post(url, json=payload)
@@ -391,42 +443,55 @@ results = response.json()
 
 print(f"Found {results['total']} games in {results['took_ms']}ms")
 for game in results['results']:
-    print(f"- {game['name']} ({game['rating']})")
+    print(f"- {game['name']} ({game['aggregated_rating']}%)")
 ```
 
 ## 🔌 Integration with Frontend
 
-The frontend (React) should:
+The frontend (React) should follow this workflow:
 
-1. Build a `SearchRequest` payload with:
+1. **Load Filters on Mount**: GET `/filters` to populate all filter dropdown menus
+
+```javascript
+const filtersResponse = await fetch('/filters');
+const availableFilters = await filtersResponse.json();
+// Use to populate checkboxes/dropdowns for genres, platforms, etc.
+```
+
+2. **Build Search Request**: When user searches, build a `SearchRequest` payload with:
    - User's search query
    - Selected fields from a checkbox list
    - Field weights from sliders
    - Filter selections
 
-2. POST to `/search` with the payload
+```javascript
+const searchPayload = {
+  query_text: userQuery,
+  fields: selectedFields.map(f => ({ field: f.name, weight: f.weight })),
+  size: resultsPerPage,
+  filters: {
+    genres: selectedGenres,
+    platforms: selectedPlatforms,
+    game_modes: selectedGameModes,
+    player_perspectives: selectedPerspectives,
+    themes: selectedThemes
+  }
+};
+```
 
-3. Parse the `SearchResponse` and display:
-   - Game results with metadata
-   - Total hit count and query time
-
-Example React integration:
+3. **Execute Search**: POST to `/search` with the payload
 
 ```javascript
 const response = await fetch('/search', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    query_text: userQuery,
-    fields: selectedFields.map(f => ({ field: f.name, weight: f.weight })),
-    size: resultsPerPage,
-    filters: selectedFilters
-  })
+  body: JSON.stringify(searchPayload)
 });
 
 const data = await response.json();
 setResults(data.results);
 setTotal(data.total);
+setQueryTime(data.took_ms);
 ```
 
 ## 📦 Deployment
