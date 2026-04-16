@@ -12,10 +12,17 @@ INDEX_NAME = "games"
 
 print(es.info())
 
-# 🔧 Mapping mais completo (inclui frontend + IR)
 mapping = {
     "settings": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0,
         "analysis": {
+            "normalizer": {
+                "lowercase_normalizer": {
+                    "type": "custom",
+                    "filter": ["lowercase"]
+                }
+            },
             "analyzer": {
                 "default": {
                     "type": "standard"
@@ -36,21 +43,21 @@ mapping = {
 
             "summary": {"type": "text"},
 
-            "category": {"type": "keyword"},
-            "genres": {"type": "keyword"},
-            "themes": {"type": "keyword"},
-            "keywords": {"type": "keyword"},
+            "category": {"type": "keyword", "normalizer": "lowercase_normalizer"},
+            "genres": {"type": "keyword", "normalizer": "lowercase_normalizer"},
+            "themes": {"type": "keyword", "normalizer": "lowercase_normalizer"},
+            "keywords": {"type": "keyword", "normalizer": "lowercase_normalizer"},
 
             "release_date": {"type": "date"},
 
             "rating": {"type": "float"},
             "aggregated_rating": {"type": "float"},
 
-            "platforms": {"type": "keyword"},
-            "game_modes": {"type": "keyword"},
-            "player_perspectives": {"type": "keyword"},
+            "platforms": {"type": "keyword", "normalizer": "lowercase_normalizer"},
+            "game_modes": {"type": "keyword", "normalizer": "lowercase_normalizer"},
+            "player_perspectives": {"type": "keyword", "normalizer": "lowercase_normalizer"},
 
-            # 🎨 FRONTEND (importante agora)
+            # 🎨 FRONTEND
             "cover_url": {"type": "keyword"},
             "screenshot_urls": {"type": "keyword"},
             "artwork_urls": {"type": "keyword"}
@@ -58,9 +65,12 @@ mapping = {
     }
 }
 
-# 🔒 Cria índice só se não existir
-if not es.indices.exists(index=INDEX_NAME):
-    es.indices.create(index=INDEX_NAME, body=mapping)
+if es.indices.exists(index=INDEX_NAME):
+    es.indices.delete(index=INDEX_NAME)
+    print(f"Deleted existing index '{INDEX_NAME}'")
+
+es.indices.create(index=INDEX_NAME, body=mapping)
+print(f"Created index '{INDEX_NAME}' with normalizer mapping")
 
 def parse_list(value):
     try:
@@ -108,11 +118,11 @@ with open("game_dataset_cleaned.csv", encoding="utf-8") as f:
 
         actions.append({
             "_index": INDEX_NAME,
-            "_id": row["id"],  # 🔥 garante idempotência
+            "_id": row["id"],
             "_source": doc
         })
 
 # 🚀 Bulk indexing
 helpers.bulk(es, actions)
 
-print("Indexação concluída com sucesso!")
+print("Indexing completed successfully!")
