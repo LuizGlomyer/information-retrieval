@@ -1,0 +1,41 @@
+info:
+  name: Basic Search
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: http://localhost:8080/search
+  body:
+    type: json
+    data: |-
+      {
+        "query_text": "Super Mario",
+        "fields": [
+          {
+            "field": "name",
+            "weight": 3
+          }
+          ,{
+            "field": "summary",
+            "weight": 1
+          }
+      //     ,{
+      //       "field": "keywords"
+      //     }
+        ],
+        "size": 100
+        ,"filters": {
+          "genres": [
+      //       "platform"
+            "Role-playing (RPG)"
+          ]
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

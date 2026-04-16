@@ -1,0 +1,14 @@
+{
+  "version": "1",
+  "name": "information-retrieval",
+  "uid": "8b2e3f1a-9c7d-4e2a-b5f1-2c8d9e3a4f5b",
+  "root": true,
+  "environments": [],
+  "scripts": {
+    "pre-request": [],
+    "post-response": []
+  },
+  "vars": {
+    "base_url": "http://localhost:8080"
+  }
+}
