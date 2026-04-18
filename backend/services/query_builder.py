@@ -104,7 +104,19 @@ class QueryBuilder:
 
             if rating_range:
                 filter_clauses.append({
-                    "range": {"aggregated_rating": rating_range}
+                    "range": {"rating": rating_range}
+                })
+
+        if filters.aggregated_rating:
+            agg_rating_range = {}
+            if filters.aggregated_rating.min_rating is not None:
+                agg_rating_range["gte"] = filters.aggregated_rating.min_rating
+            if filters.aggregated_rating.max_rating is not None:
+                agg_rating_range["lte"] = filters.aggregated_rating.max_rating
+
+            if agg_rating_range:
+                filter_clauses.append({
+                    "range": {"aggregated_rating": agg_rating_range}
                 })
 
         return filter_clauses

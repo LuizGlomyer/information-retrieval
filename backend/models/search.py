@@ -4,7 +4,8 @@ Provides data validation and type safety for the API.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from config import SEARCHABLE_FIELDS
 
 
 class SearchField(BaseModel):
@@ -17,6 +18,16 @@ class SearchField(BaseModel):
     """
     field: str = Field(..., description="Field name to search in (e.g., 'name', 'summary')")
     weight: float = Field(default=1, ge=0.1, le=10, description="Field weight boost (0.1 to 10, default 1)")
+
+    @field_validator("field")
+    @classmethod
+    def validate_field_is_searchable(cls, v):
+        """Ensure the field is in the list of searchable fields."""
+        if v not in SEARCHABLE_FIELDS:
+            raise ValueError(
+                f"Field '{v}' is not searchable. Allowed fields: {', '.join(SEARCHABLE_FIELDS)}"
+            )
+        return v
 
 
 class DateRangeFilter(BaseModel):
@@ -35,7 +46,10 @@ class FilterCriteria(BaseModel):
     """
     Optional filtering criteria to narrow down search results.
     All filters are ANDed together.
+    Only fields defined here are allowed.
     """
+    model_config = ConfigDict(extra='forbid')
+    
     genres: Optional[List[str]] = Field(None, description="Filter by any of these genres")
     game_modes: Optional[List[str]] = Field(None, description="Filter by any of these game modes")
     platforms: Optional[List[str]] = Field(None, description="Filter by any of these platforms")
@@ -43,6 +57,7 @@ class FilterCriteria(BaseModel):
     themes: Optional[List[str]] = Field(None, description="Filter by any of these themes")
     release_date: Optional[DateRangeFilter] = Field(None, description="Filter by release date range")
     rating: Optional[RatingRangeFilter] = Field(None, description="Filter by rating range")
+    aggregated_rating: Optional[RatingRangeFilter] = Field(None, description="Filter by aggregated rating range")
 
 
 class SearchRequest(BaseModel):

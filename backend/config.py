@@ -17,7 +17,7 @@ MIN_RESULT_SIZE = 1
 DEFAULT_QUERY_TYPE = "best_fields"
 DEFAULT_FUZZINESS = "AUTO"
 
-# Supported fields for searching and filtering
+# Supported fields for searching
 SEARCHABLE_FIELDS = [
     "name",
     "summary",
@@ -25,14 +25,7 @@ SEARCHABLE_FIELDS = [
     "themes",
     "category",
     "genres",
+    "platforms",
+    "player_perspectives",
+    "game_modes",
 ]
-
-FILTERABLE_FIELDS = {
-    "category": "keyword",
-    "genres": "keyword",
-    "platforms": "keyword",
-    "themes": "keyword",
-    "release_date": "date",
-    "rating": "float",
-    "aggregated_rating": "float",
-}
