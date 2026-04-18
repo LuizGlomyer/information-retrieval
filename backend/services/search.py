@@ -135,6 +135,11 @@ class SearchService:
             genres=source.get("genres"),
             themes=source.get("themes"),
             platforms=source.get("platforms"),
+            game_modes=source.get("game_modes"),
+            player_perspectives=source.get("player_perspectives"),
             keywords=source.get("keywords"),
             release_date=source.get("release_date"),
+            cover_url=source.get("cover_url"),
+            screenshot_urls=source.get("screenshot_urls"),
+            artwork_urls=source.get("artwork_urls"),
         )

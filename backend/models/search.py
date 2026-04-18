@@ -103,8 +103,13 @@ class GameResult(BaseModel):
     genres: Optional[List[str]] = Field(None, description="Genres")
     themes: Optional[List[str]] = Field(None, description="Themes")
     platforms: Optional[List[str]] = Field(None, description="Platforms")
+    game_modes: Optional[List[str]] = Field(None, description="Game modes")
+    player_perspectives: Optional[List[str]] = Field(None, description="Player perspectives")
     keywords: Optional[List[str]] = Field(None, description="Keywords")
     release_date: Optional[str] = Field(None, description="Release date")
+    cover_url: Optional[str] = Field(None, description="Cover image URL")
+    screenshot_urls: Optional[List[str]] = Field(None, description="Screenshot image URLs")
+    artwork_urls: Optional[List[str]] = Field(None, description="Artwork image URLs")
 
     class Config:
         from_attributes = True
