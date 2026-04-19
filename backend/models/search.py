@@ -5,7 +5,7 @@ Provides data validation and type safety for the API.
 
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-from config import SEARCHABLE_FIELDS
+from config import SEARCHABLE_FIELDS, DEFAULT_RESULT_SIZE, MIN_RESULT_SIZE, MAX_RESULT_SIZE
 
 
 class SearchField(BaseModel):
@@ -80,7 +80,7 @@ class SearchRequest(BaseModel):
     """
     query_text: str = Field(..., min_length=1, max_length=500, description="Search query string")
     fields: List[SearchField] = Field(..., min_items=1, description="Fields to search with weights")
-    size: int = Field(default=5, ge=1, le=100, description="Number of results to return (1-100)")
+    size: int = Field(default=DEFAULT_RESULT_SIZE, ge=MIN_RESULT_SIZE, le=MAX_RESULT_SIZE, description="Number of results to return")
     filters: Optional[FilterCriteria] = Field(None, description="Optional filtering criteria")
 
     @field_validator("fields")

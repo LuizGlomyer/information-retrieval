@@ -25,7 +25,6 @@ class SearchService:
     @staticmethod
     def execute_search(
         es_client: Elasticsearch,
-        index_name: str,
         request: SearchRequest
     ) -> MultiAlgorithmSearchResponse:
         """
@@ -34,13 +33,8 @@ class SearchService:
         Runs both BM25 (Elasticsearch native) and SVM (TF-IDF via Scripted Similarity)
         ranking algorithms against the query and returns results from both.
         
-        **Note**: The index_name parameter is ignored. This method always queries:
-        - BM25 index (games) for BM25 results
-        - SVM index (games_svm) for TF-IDF results
-        
         Args:
             es_client: Elasticsearch client instance
-            index_name: Ignored (for backward compatibility)
             request: SearchRequest with query parameters
             
         Returns:
@@ -343,7 +337,7 @@ class SearchService:
         
         Args:
             game: GameResult object
-            es_score: Elasticsearch relevance score (0-100 range expected)
+            es_score: Elasticsearch relevance score
             rank: Rank position (1-based)
             algorithm: Algorithm name (e.g., "bm25", "svm")
             
@@ -367,7 +361,7 @@ class SearchService:
             cover_url=game.cover_url,
             screenshot_urls=game.screenshot_urls,
             artwork_urls=game.artwork_urls,
-            score=min(100.0, max(0.0, es_score)),  # Normalize to 0-100
+            score=es_score,
             rank=rank,
             algorithm=algorithm
         )

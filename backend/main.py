@@ -32,22 +32,6 @@ def validate_elasticsearch_connection() -> Elasticsearch:
     return es_client
 
 
-def validate_index_exists(es_client: Elasticsearch, index_name: str) -> None:
-    """
-    Validate that the required index exists.
-    Exits the application if index doesn't exist.
-    """
-    try:
-        if es_client.indices.exists(index=index_name):
-            print(f"✓ Index '{index_name}' exists")
-        else:
-            print(f"❌ Index '{index_name}' does not exist")
-            sys.exit(1)
-    except Exception as e:
-        print(f"❌ Error checking index: {e}")
-        sys.exit(1)
-
-
 def create_app() -> FastAPI:
     """
     Create and configure the FastAPI application.
@@ -67,14 +51,8 @@ def create_app() -> FastAPI:
     if not indices_ok:
         print("⚠ Warning: Failed to initialize some indices")
     
-    # Validate both indices exist
-    validate_index_exists(es_client, BM25_INDEX_NAME)
-    validate_index_exists(es_client, SVM_INDEX_NAME)
-    
     # Store client in app state for use in endpoints
     app.state.es_client = es_client
-    app.state.bm25_index = BM25_INDEX_NAME
-    app.state.svm_index = SVM_INDEX_NAME
 
     @app.get("/health", tags=["Health"])
     async def health_check():
@@ -172,7 +150,6 @@ def create_app() -> FastAPI:
         try:
             response = SearchService.execute_search(
                 es_client=app.state.es_client,
-                index_name=BM25_INDEX_NAME,
                 request=request
             )
             return response
