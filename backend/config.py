@@ -28,10 +28,10 @@ SEARCHABLE_FIELDS = [
 # ============================================================================
 # TF-IDF (VECTOR SPACE MODEL - SALTON 1971) - PAINLESS SCRIPT
 # ============================================================================
-# 
+#
 # Implements TF-IDF scoring inside Elasticsearch using Painless script.
 # This script is used for SVM (Support Vector Model) ranking algorithm.
-# 
+#
 # FORMULA COMPONENTS:
 # 1. TF (Term Frequency):
 #    tf = √(freq)
@@ -88,27 +88,15 @@ BM25_INDEX_CONFIG = {
         "number_of_replicas": 0,
         "analysis": {
             "normalizer": {
-                "lowercase_normalizer": {
-                    "type": "custom",
-                    "filter": ["lowercase"]
-                }
+                "lowercase_normalizer": {"type": "custom", "filter": ["lowercase"]}
             },
-            "analyzer": {
-                "default": {
-                    "type": "standard"
-                }
-            }
-        }
+            "analyzer": {"default": {"type": "standard"}},
+        },
     },
     "mappings": {
         "properties": {
             "id": {"type": "keyword"},
-            "name": {
-                "type": "text",
-                "fields": {
-                    "keyword": {"type": "keyword"}
-                }
-            },
+            "name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
             "summary": {"type": "text"},
             "category": {"type": "keyword", "normalizer": "lowercase_normalizer"},
             "genres": {"type": "keyword", "normalizer": "lowercase_normalizer"},
@@ -119,12 +107,15 @@ BM25_INDEX_CONFIG = {
             "aggregated_rating": {"type": "float"},
             "platforms": {"type": "keyword", "normalizer": "lowercase_normalizer"},
             "game_modes": {"type": "keyword", "normalizer": "lowercase_normalizer"},
-            "player_perspectives": {"type": "keyword", "normalizer": "lowercase_normalizer"},
+            "player_perspectives": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+            },
             "cover_url": {"type": "keyword"},
             "screenshot_urls": {"type": "keyword"},
-            "artwork_urls": {"type": "keyword"}
+            "artwork_urls": {"type": "keyword"},
         }
-    }
+    },
 }
 
 # SVM (TF-IDF) Index Configuration with Scripted Similarity
@@ -135,25 +126,16 @@ SVM_INDEX_CONFIG = {
         "number_of_replicas": 0,
         "analysis": {
             "normalizer": {
-                "lowercase_normalizer": {
-                    "type": "custom",
-                    "filter": ["lowercase"]
-                }
+                "lowercase_normalizer": {"type": "custom", "filter": ["lowercase"]}
             },
-            "analyzer": {
-                "default": {
-                    "type": "standard"
-                }
-            }
+            "analyzer": {"default": {"type": "standard"}},
         },
         "similarity": {
             "tfidf_salton": {
                 "type": "scripted",
-                "script": {
-                    "source": TFIDF_SCRIPT_SOURCE
-                }
+                "script": {"source": TFIDF_SCRIPT_SOURCE},
             }
-        }
+        },
     },
     "mappings": {
         "properties": {
@@ -161,14 +143,9 @@ SVM_INDEX_CONFIG = {
             "name": {
                 "type": "text",
                 "similarity": "tfidf_salton",
-                "fields": {
-                    "keyword": {"type": "keyword"}
-                }
+                "fields": {"keyword": {"type": "keyword"}},
             },
-            "summary": {
-                "type": "text",
-                "similarity": "tfidf_salton"
-            },
+            "summary": {"type": "text", "similarity": "tfidf_salton"},
             "category": {"type": "keyword", "normalizer": "lowercase_normalizer"},
             "genres": {"type": "keyword", "normalizer": "lowercase_normalizer"},
             "themes": {"type": "keyword", "normalizer": "lowercase_normalizer"},
@@ -178,10 +155,13 @@ SVM_INDEX_CONFIG = {
             "aggregated_rating": {"type": "float"},
             "platforms": {"type": "keyword", "normalizer": "lowercase_normalizer"},
             "game_modes": {"type": "keyword", "normalizer": "lowercase_normalizer"},
-            "player_perspectives": {"type": "keyword", "normalizer": "lowercase_normalizer"},
+            "player_perspectives": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+            },
             "cover_url": {"type": "keyword"},
             "screenshot_urls": {"type": "keyword"},
-            "artwork_urls": {"type": "keyword"}
+            "artwork_urls": {"type": "keyword"},
         }
-    }
+    },
 }

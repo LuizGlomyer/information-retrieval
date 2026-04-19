@@ -8,5 +8,6 @@ dependencies = [
     "elasticsearch>=9.3.0",
     "fastapi>=0.135.3",
     "pydantic>=2.13.0",
+    "ruff>=0.15.11",
     "uvicorn>=0.44.0",
 ]

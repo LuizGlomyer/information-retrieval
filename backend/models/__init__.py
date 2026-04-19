@@ -1,4 +1,5 @@
 """Models package for API data structures."""
+
 from models.search import (
     SearchField,
     SearchRequest,

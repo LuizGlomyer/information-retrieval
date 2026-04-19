@@ -4,12 +4,16 @@ Handles multi-algorithm search execution, error handling, and response mapping.
 """
 
 import time
-from typing import List, Dict, Any
+from typing import Dict, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError, NotFoundError, BadRequestError
 from models.search import (
-    SearchRequest, SearchResponse, GameResult, 
-    MultiAlgorithmSearchResponse, AlgorithmResult, RankedResult
+    SearchRequest,
+    SearchResponse,
+    GameResult,
+    MultiAlgorithmSearchResponse,
+    AlgorithmResult,
+    RankedResult,
 )
 from services.query_builder import QueryBuilder
 from config import BM25_INDEX_NAME, SVM_INDEX_NAME
@@ -24,22 +28,21 @@ class SearchService:
 
     @staticmethod
     def execute_search(
-        es_client: Elasticsearch,
-        request: SearchRequest
+        es_client: Elasticsearch, request: SearchRequest
     ) -> MultiAlgorithmSearchResponse:
         """
         Execute multi-algorithm search (BM25 + SVM).
-        
+
         Runs both BM25 (Elasticsearch native) and SVM (TF-IDF via Scripted Similarity)
         ranking algorithms against the query and returns results from both.
-        
+
         Args:
             es_client: Elasticsearch client instance
             request: SearchRequest with query parameters
-            
+
         Returns:
             MultiAlgorithmSearchResponse with results from both algorithms
-            
+
         Raises:
             ConnectionError: If ES connection fails
             NotFoundError: If indices don't exist
@@ -47,37 +50,35 @@ class SearchService:
             ValueError: If response parsing fails
         """
         return SearchService.execute_multi_algorithm_search(
-            es_client=es_client,
-            request=request
+            es_client=es_client, request=request
         )
 
     @staticmethod
     def execute_multi_algorithm_search(
-        es_client: Elasticsearch,
-        request: SearchRequest
+        es_client: Elasticsearch, request: SearchRequest
     ) -> MultiAlgorithmSearchResponse:
         """
         Execute multi-algorithm search (BM25 + SVM).
-        
+
         **BM25 Algorithm**: Uses Elasticsearch's native BM25 similarity from games index.
         Multi-match query with field weighting specified in request.
-        
+
         **SVM Algorithm**: Uses TF-IDF (Vector Space Model) via Scripted Similarity
         from games_svm index. Same query as BM25, but scored with TF-IDF formula:
         score = query.boost × √(freq) × idf × (1/√(length))
-        
+
         Both algorithms apply the same filters (genres, platforms, etc.).
         Results are returned separately, sorted by score (descending) within each algorithm.
-        
+
         Args:
             es_client: Elasticsearch client instance
             request: SearchRequest with query text, fields, size, filters
-            
+
         Returns:
             MultiAlgorithmSearchResponse containing:
                 - bm25: AlgorithmResult with BM25-ranked results (games index)
                 - svm: AlgorithmResult with TF-IDF-ranked results (games_svm index)
-            
+
         Raises:
             ConnectionError: If ES connection fails
             NotFoundError: If indices don't exist
@@ -87,55 +88,46 @@ class SearchService:
         try:
             # Execute BM25 algorithm (from BM25 index)
             bm25_result = SearchService._execute_bm25(
-                es_client=es_client,
-                request=request
+                es_client=es_client, request=request
             )
-            
+
             # Execute SVM algorithm (from SVM index with TF-IDF scripted similarity)
             svm_result = SearchService._execute_svm(
-                es_client=es_client,
-                request=request
+                es_client=es_client, request=request
             )
-            
+
             return MultiAlgorithmSearchResponse(bm25=bm25_result, svm=svm_result)
 
         except ConnectionError as e:
-            raise ConnectionError(
-                f"Failed to connect to Elasticsearch: {str(e)}"
-            )
-        except NotFoundError as e:
+            raise ConnectionError(f"Failed to connect to Elasticsearch: {str(e)}")
+        except NotFoundError:
             raise NotFoundError(
                 f"Indices not found. Ensure both '{BM25_INDEX_NAME}' and '{SVM_INDEX_NAME}' exist."
             )
         except BadRequestError as e:
-            raise BadRequestError(
-                f"Invalid search query: {str(e)}"
-            )
+            raise BadRequestError(f"Invalid search query: {str(e)}")
         except Exception as e:
-            raise ValueError(
-                f"Multi-algorithm search failed: {str(e)}"
-            )
+            raise ValueError(f"Multi-algorithm search failed: {str(e)}")
 
     @staticmethod
     def _execute_bm25(
-        es_client: Elasticsearch,
-        request: SearchRequest
+        es_client: Elasticsearch, request: SearchRequest
     ) -> AlgorithmResult:
         """
         Execute BM25 (Elasticsearch native) search.
-        
+
         Queries the BM25 index (games) using multi_match query with field weights.
         Elasticsearch returns BM25 relevance scores automatically.
-        
+
         Args:
             es_client: Elasticsearch client instance
             request: SearchRequest with query parameters
-            
+
         Returns:
             AlgorithmResult with BM25-ranked results
         """
         start_time = time.time()
-        
+
         try:
             # Build query (same for both algorithms, different index has different similarity)
             query_body = QueryBuilder.build_search_body(request)
@@ -145,7 +137,7 @@ class SearchService:
 
             # Parse results
             total_count, results_data = SearchService._parse_es_response(response)
-            
+
             # Convert to RankedResult with BM25 metadata
             ranked_results = [
                 SearchService._game_result_to_ranked_result(
@@ -155,11 +147,11 @@ class SearchService:
             ]
 
             execution_time_ms = int((time.time() - start_time) * 1000)
-            
+
             return AlgorithmResult(
                 results=ranked_results,
                 total=total_count,
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
 
         except Exception as e:
@@ -167,30 +159,29 @@ class SearchService:
 
     @staticmethod
     def _execute_svm(
-        es_client: Elasticsearch,
-        request: SearchRequest
+        es_client: Elasticsearch, request: SearchRequest
     ) -> AlgorithmResult:
         """
         Execute SVM (TF-IDF - Vector Space Model) search.
-        
+
         Queries the SVM index (games_svm) which uses Scripted Similarity
         to calculate TF-IDF scores. Elasticsearch applies the TF-IDF formula
         directly during query execution, returning TF-IDF scores.
-        
+
         Formula: score = query.boost × √(freq) × idf × (1/√(length))
         - freq: term frequency in document
         - idf: log((docCount + 1) / (docFreq + 1)) + 1
         - length: number of terms in field
-        
+
         Args:
             es_client: Elasticsearch client instance
             request: SearchRequest with query parameters
-            
+
         Returns:
             AlgorithmResult with TF-IDF-ranked results
         """
         start_time = time.time()
-        
+
         try:
             # Build same query as BM25 - but SVM index uses different similarity
             query_body = QueryBuilder.build_search_body(request)
@@ -200,21 +191,19 @@ class SearchService:
 
             # Parse results - ES already calculated TF-IDF scores
             total_count, results_data = SearchService._parse_es_response(response)
-            
+
             # Convert to RankedResult with SVM metadata
             ranked_results = [
-                SearchService._game_result_to_ranked_result(
-                    doc, score, rank + 1, "svm"
-                )
+                SearchService._game_result_to_ranked_result(doc, score, rank + 1, "svm")
                 for rank, (doc, score) in enumerate(results_data)
             ]
 
             execution_time_ms = int((time.time() - start_time) * 1000)
-            
+
             return AlgorithmResult(
                 results=ranked_results,
                 total=total_count,
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
 
         except Exception as e:
@@ -224,20 +213,20 @@ class SearchService:
     def _parse_es_response(es_response: Dict[str, Any]) -> tuple:
         """
         Parse Elasticsearch response and extract documents with ES scores.
-        
+
         Args:
             es_response: Raw Elasticsearch response dictionary
-            
+
         Returns:
             Tuple of (total_count, list of (GameResult, score) tuples)
-            
+
         Raises:
             ValueError: If response structure is invalid
         """
         try:
             # Extract total hits count
             total_hits = es_response.get("hits", {}).get("total", {})
-            
+
             # Handle both ES 7 and ES 8+ response formats
             if isinstance(total_hits, dict):
                 total_count = total_hits.get("value", 0)
@@ -254,53 +243,45 @@ class SearchService:
             return total_count, results_data
 
         except (KeyError, TypeError) as e:
-            raise ValueError(
-                f"Failed to parse Elasticsearch response: {str(e)}"
-            )
+            raise ValueError(f"Failed to parse Elasticsearch response: {str(e)}")
 
     @staticmethod
     def _parse_response(es_response: Dict[str, Any]) -> SearchResponse:
         """
         Parse Elasticsearch response into SearchResponse model.
         DEPRECATED: Use _parse_es_response for multi-algorithm support.
-        
+
         Args:
             es_response: Raw Elasticsearch response dictionary
-            
+
         Returns:
             SearchResponse with parsed results
-            
+
         Raises:
             ValueError: If response structure is invalid
         """
         try:
             total_count, results_data = SearchService._parse_es_response(es_response)
-            
+
             # Extract just the GameResult objects
             results = [doc for doc, _ in results_data]
-            
+
             # Get execution time
             took_ms = es_response.get("took", 0)
 
-            return SearchResponse(
-                results=results,
-                total=total_count,
-                took_ms=took_ms
-            )
+            return SearchResponse(results=results, total=total_count, took_ms=took_ms)
 
         except (KeyError, TypeError) as e:
-            raise ValueError(
-                f"Failed to parse Elasticsearch response: {str(e)}"
-            )
+            raise ValueError(f"Failed to parse Elasticsearch response: {str(e)}")
 
     @staticmethod
     def _parse_hit(hit: Dict[str, Any]) -> GameResult:
         """
         Convert an Elasticsearch hit into a GameResult model.
-        
+
         Args:
             hit: Single hit from Elasticsearch response
-            
+
         Returns:
             GameResult with game data
         """
@@ -327,20 +308,17 @@ class SearchService:
 
     @staticmethod
     def _game_result_to_ranked_result(
-        game: GameResult,
-        es_score: float,
-        rank: int,
-        algorithm: str
+        game: GameResult, es_score: float, rank: int, algorithm: str
     ) -> RankedResult:
         """
         Convert a GameResult to RankedResult with algorithm metadata.
-        
+
         Args:
             game: GameResult object
             es_score: Elasticsearch relevance score
             rank: Rank position (1-based)
             algorithm: Algorithm name (e.g., "bm25", "svm")
-            
+
         Returns:
             RankedResult with ranking information
         """
@@ -363,8 +341,5 @@ class SearchService:
             artwork_urls=game.artwork_urls,
             score=es_score,
             rank=rank,
-            algorithm=algorithm
+            algorithm=algorithm,
         )
-
-
-

@@ -17,15 +17,15 @@ class QueryBuilder:
     def build_multi_match_query(fields: List[SearchField]) -> Dict[str, Any]:
         """
         Convert list of SearchField to Elasticsearch multi_match format.
-        
+
         Converts:
             [{"field": "name", "weight": 2}, {"field": "summary", "weight": 1}]
         To:
             ["name^2", "summary^1"]
-        
+
         Args:
             fields: List of SearchField with field names and weights
-            
+
         Returns:
             List of formatted field strings with weights
         """
@@ -43,10 +43,10 @@ class QueryBuilder:
         """
         Build Elasticsearch filter clauses from FilterCriteria.
         All filters are ANDed together (must clauses).
-        
+
         Args:
             filters: FilterCriteria object with optional genres, platforms, etc.
-            
+
         Returns:
             List of filter dictionaries for Elasticsearch bool query
         """
@@ -57,29 +57,21 @@ class QueryBuilder:
 
         # Multi-value filters (any match)
         if filters.genres:
-            filter_clauses.append({
-                "terms": {"genres": filters.genres}
-            })
+            filter_clauses.append({"terms": {"genres": filters.genres}})
 
         if filters.game_modes:
-            filter_clauses.append({
-                "terms": {"game_modes": filters.game_modes}
-            })
+            filter_clauses.append({"terms": {"game_modes": filters.game_modes}})
 
         if filters.platforms:
-            filter_clauses.append({
-                "terms": {"platforms": filters.platforms}
-            })
+            filter_clauses.append({"terms": {"platforms": filters.platforms}})
 
         if filters.player_perspectives:
-            filter_clauses.append({
-                "terms": {"player_perspectives": filters.player_perspectives}
-            })
+            filter_clauses.append(
+                {"terms": {"player_perspectives": filters.player_perspectives}}
+            )
 
         if filters.themes:
-            filter_clauses.append({
-                "terms": {"themes": filters.themes}
-            })
+            filter_clauses.append({"terms": {"themes": filters.themes}})
 
         # Date range filter
         if filters.release_date:
@@ -90,9 +82,7 @@ class QueryBuilder:
                 date_range["lte"] = filters.release_date.end_date
 
             if date_range:
-                filter_clauses.append({
-                    "range": {"release_date": date_range}
-                })
+                filter_clauses.append({"range": {"release_date": date_range}})
 
         # Rating range filter
         if filters.rating:
@@ -103,9 +93,7 @@ class QueryBuilder:
                 rating_range["lte"] = filters.rating.max_rating
 
             if rating_range:
-                filter_clauses.append({
-                    "range": {"rating": rating_range}
-                })
+                filter_clauses.append({"range": {"rating": rating_range}})
 
         if filters.aggregated_rating:
             agg_rating_range = {}
@@ -115,9 +103,9 @@ class QueryBuilder:
                 agg_rating_range["lte"] = filters.aggregated_rating.max_rating
 
             if agg_rating_range:
-                filter_clauses.append({
-                    "range": {"aggregated_rating": agg_rating_range}
-                })
+                filter_clauses.append(
+                    {"range": {"aggregated_rating": agg_rating_range}}
+                )
 
         return filter_clauses
 
@@ -125,16 +113,16 @@ class QueryBuilder:
     def build_search_body(request: SearchRequest) -> Dict[str, Any]:
         """
         Build complete Elasticsearch query body from SearchRequest.
-        
+
         Combines multi_match query with optional filters.
         Uses best_fields type to find documents where query terms appear together.
-        
+
         Args:
             request: SearchRequest with query text, fields, size, and optional filters
-            
+
         Returns:
             Complete Elasticsearch query body ready for execution
-            
+
         Example:
             {
                 "query": {
@@ -157,13 +145,15 @@ class QueryBuilder:
 
         # Build the bool query
         bool_query: Dict[str, Any] = {
-            "must": [{
-                "multi_match": {
-                    "query": request.query_text,
-                    "fields": formatted_fields,
-                    "type": "best_fields"
+            "must": [
+                {
+                    "multi_match": {
+                        "query": request.query_text,
+                        "fields": formatted_fields,
+                        "type": "best_fields",
+                    }
                 }
-            }]
+            ]
         }
 
         # Add filters if any exist
@@ -171,9 +161,6 @@ class QueryBuilder:
             bool_query["filter"] = filter_clauses
 
         # Build final body
-        body: Dict[str, Any] = {
-            "query": {"bool": bool_query},
-            "size": request.size
-        }
+        body: Dict[str, Any] = {"query": {"bool": bool_query}, "size": request.size}
 
         return body

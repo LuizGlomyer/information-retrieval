@@ -23,17 +23,19 @@ class FiltersService:
     ]
 
     @staticmethod
-    def get_all_filters(es_client: Elasticsearch, index_name: str) -> Dict[str, List[str]]:
+    def get_all_filters(
+        es_client: Elasticsearch, index_name: str
+    ) -> Dict[str, List[str]]:
         """
         Fetch all unique filter values from the Elasticsearch index.
-        
+
         Args:
             es_client: Elasticsearch client instance
             index_name: Name of the index to search
-            
+
         Returns:
             Dictionary with filter field names as keys and sorted unique values as values
-            
+
         Raises:
             ConnectionError: If ES connection fails
             NotFoundError: If index doesn't exist
@@ -50,32 +52,24 @@ class FiltersService:
             return filters_data
 
         except ConnectionError as e:
-            raise ConnectionError(
-                f"Failed to connect to Elasticsearch: {str(e)}"
-            )
-        except NotFoundError as e:
-            raise NotFoundError(
-                f"Index '{index_name}' not found in Elasticsearch"
-            )
+            raise ConnectionError(f"Failed to connect to Elasticsearch: {str(e)}")
+        except NotFoundError:
+            raise NotFoundError(f"Index '{index_name}' not found in Elasticsearch")
         except Exception as e:
-            raise ValueError(
-                f"Failed to fetch filters: {str(e)}"
-            )
+            raise ValueError(f"Failed to fetch filters: {str(e)}")
 
     @staticmethod
     def _get_field_values(
-        es_client: Elasticsearch,
-        index_name: str,
-        field_name: str
+        es_client: Elasticsearch, index_name: str, field_name: str
     ) -> Set[str]:
         """
         Get unique values for a specific field using Elasticsearch aggregations.
-        
+
         Args:
             es_client: Elasticsearch client instance
             index_name: Name of the index to search
             field_name: Name of the field to aggregate
-            
+
         Returns:
             Set of unique values in the field
         """
@@ -85,24 +79,25 @@ class FiltersService:
             query_body = {
                 "size": 0,
                 "aggs": {
-                    "unique_values": {
-                        "terms": {
-                            "field": field_name,
-                            "size": 10000
-                        }
-                    }
-                }
+                    "unique_values": {"terms": {"field": field_name, "size": 10000}}
+                },
             }
 
             response = es_client.search(index=index_name, body=query_body)
 
             # Extract unique values from aggregation buckets
-            buckets = response.get("aggregations", {}).get("unique_values", {}).get("buckets", [])
+            buckets = (
+                response.get("aggregations", {})
+                .get("unique_values", {})
+                .get("buckets", [])
+            )
             unique_values = {bucket["key"] for bucket in buckets if bucket["key"]}
 
             return unique_values
 
         except Exception as e:
             # If aggregation fails, return empty set for this field
-            print(f"⚠️  Warning: Could not fetch values for field '{field_name}': {str(e)}")
+            print(
+                f"⚠️  Warning: Could not fetch values for field '{field_name}': {str(e)}"
+            )
             return set()
