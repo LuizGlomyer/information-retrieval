@@ -6,10 +6,11 @@ from pydantic import ValidationError
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError, NotFoundError, BadRequestError
 
-from config import ELASTICSEARCH_HOST, ELASTICSEARCH_PORT, ELASTICSEARCH_INDEX
-from models.search import SearchRequest, SearchResponse, FiltersResponse, ErrorResponse
+from config import ELASTICSEARCH_HOST, ELASTICSEARCH_PORT, BM25_INDEX_NAME, SVM_INDEX_NAME
+from models.search import SearchRequest, SearchResponse, MultiAlgorithmSearchResponse, FiltersResponse, ErrorResponse
 from services.search import SearchService
 from services.filters import FiltersService
+from services.index_manager import IndexManager
 
 
 def validate_elasticsearch_connection() -> Elasticsearch:
@@ -50,20 +51,30 @@ def validate_index_exists(es_client: Elasticsearch, index_name: str) -> None:
 def create_app() -> FastAPI:
     """
     Create and configure the FastAPI application.
+    Initializes both BM25 and SVM (TF-IDF) indices for multi-algorithm search.
     """
     app = FastAPI(
         title="Information Retrieval API",
-        version="0.1.0",
-        description="Dynamic Elasticsearch search API with weighted field queries and filtering"
+        version="0.2.0",
+        description="Multi-algorithm search API: BM25 + TF-IDF (SVM) with weighted fields and filtering"
     )
     
     # Initialize Elasticsearch client
     es_client = validate_elasticsearch_connection()
-    validate_index_exists(es_client, ELASTICSEARCH_INDEX)
+    
+    # Initialize both indices (BM25 and SVM)
+    indices_ok = IndexManager.initialize_indices(es_client)
+    if not indices_ok:
+        print("⚠ Warning: Failed to initialize some indices")
+    
+    # Validate both indices exist
+    validate_index_exists(es_client, BM25_INDEX_NAME)
+    validate_index_exists(es_client, SVM_INDEX_NAME)
     
     # Store client in app state for use in endpoints
     app.state.es_client = es_client
-    app.state.games_index = ELASTICSEARCH_INDEX
+    app.state.bm25_index = BM25_INDEX_NAME
+    app.state.svm_index = SVM_INDEX_NAME
 
     @app.get("/health", tags=["Health"])
     async def health_check():
@@ -75,24 +86,37 @@ def create_app() -> FastAPI:
         return {
             "status": "healthy",
             "elasticsearch": "connected",
-            "index": ELASTICSEARCH_INDEX
+            "indices": {
+                "bm25": BM25_INDEX_NAME,
+                "svm": SVM_INDEX_NAME
+            }
         }
 
     @app.post(
         "/search",
-        response_model=SearchResponse,
+        response_model=MultiAlgorithmSearchResponse,
         tags=["Search"],
-        summary="Dynamic Elasticsearch Search",
-        description="Search with weighted fields and optional filtering"
+        summary="Multi-Algorithm Search (BM25 + SVM)",
+        description="Search with BM25 and SVM ranking algorithms"
     )
     async def search(request: SearchRequest):
         """
-        Execute a dynamic search against the games index.
+        Execute a multi-algorithm search against the games index.
+        
+        Returns results from both **BM25** (Elasticsearch native similarity) and **SVM** (TF-IDF Vector Space Model)
+        ranking algorithms. Both algorithms apply the same filters. Results are sorted by score
+        within each algorithm (highest scores first).
+        
+        **Implementation Details:**
+        - **BM25**: Elasticsearch's default probabilistic ranking function on `games` index
+        - **SVM**: TF-IDF (Salton 1971) calculated via Elasticsearch Scripted Similarity on `games_svm` index
+          - Formula: `score = query.boost × √(freq) × idf × (1/√(length))`
+          - Computed directly in Elasticsearch during query execution
         
         **Request Body:**
         - `query_text`: (required) Search query string
         - `fields`: (required) List of fields to search with optional weights (default weight: 1)
-        - `size`: (optional) Number of results (1-100, default: 5)
+        - `size`: (optional) Number of results per algorithm (1-100, default: 5)
         - `filters`: (optional) Filter by genres, game_modes, platforms, player_perspectives, themes, date range, rating
         
         **Example Request:**
@@ -113,14 +137,42 @@ def create_app() -> FastAPI:
         ```
         
         **Response:**
-        - `results`: List of matching games with metadata
-        - `total`: Total number of matching documents
-        - `took_ms`: Query execution time in milliseconds
+        Contains results from both algorithms:
+        ```json
+        {
+            "bm25": {
+                "results": [
+                    {
+                        "id": "1",
+                        "name": "Game Name",
+                        "score": 9.5,
+                        "rank": 1,
+                        "algorithm": "bm25",
+                        "summary": "...",
+                        ...
+                    }
+                ],
+                "total": 42,
+                "execution_time_ms": 120
+            },
+            "svm": {
+                "results": [...],
+                "total": 42,
+                "execution_time_ms": 45
+            }
+        }
+        ```
+        
+        - `bm25`: Results from Elasticsearch BM25 probabilistic ranking with field-weighted scoring
+        - `svm`: Results from Elasticsearch TF-IDF Vector Space Model (Scripted Similarity) with field-weighted scoring
+        - `results`: Ranked games with score, rank, and algorithm metadata
+        - `total`: Total matching documents across all filters
+        - `execution_time_ms`: Query execution time for each algorithm in milliseconds
         """
         try:
             response = SearchService.execute_search(
                 es_client=app.state.es_client,
-                index_name=app.state.games_index,
+                index_name=BM25_INDEX_NAME,
                 request=request
             )
             return response
@@ -234,6 +286,7 @@ app = create_app()
 
 if __name__ == "__main__":
     print("✓ Application initialized successfully")
-    print(f"📚 Index: {ELASTICSEARCH_INDEX}")
+    print(f"📚 BM25 Index: {BM25_INDEX_NAME}")
+    print(f"📚 SVM Index: {SVM_INDEX_NAME}")
     print(f"🌐 Elasticsearch: {ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}")
     print("🚀 To start the server, run: uvicorn main:app --reload --port 8080")

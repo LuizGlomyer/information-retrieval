@@ -160,3 +160,72 @@ class FiltersResponse(BaseModel):
     platforms: List[str] = Field(..., description="All available platforms")
     player_perspectives: List[str] = Field(..., description="All available player perspectives")
     themes: List[str] = Field(..., description="All available themes")
+
+
+class RankedResult(GameResult):
+    """
+    Represents a game result with ranking information from a specific algorithm.
+    Extends GameResult with algorithm-specific score and rank.
+    
+    Example:
+        {
+            "id": "1",
+            "name": "Game Name",
+            "score": 9.5,
+            "rank": 1,
+            "algorithm": "bm25",
+            ...other game fields...
+        }
+    """
+    score: float = Field(..., ge=0, le=100, description="Algorithm-specific relevance score (0-100)")
+    rank: int = Field(..., ge=1, description="Rank position in algorithm results (1-based, highest score = rank 1)")
+    algorithm: str = Field(..., description="Name of the ranking algorithm (e.g., 'bm25', 'svm')")
+
+
+class AlgorithmResult(BaseModel):
+    """
+    Contains results from a single ranking algorithm.
+    
+    Example:
+        {
+            "results": [
+                {"id": "1", "name": "Game", "score": 9.5, "rank": 1, "algorithm": "bm25", ...},
+                {"id": "2", "name": "Game 2", "score": 8.2, "rank": 2, "algorithm": "bm25", ...}
+            ],
+            "total": 42,
+            "execution_time_ms": 125
+        }
+    """
+    results: List[RankedResult] = Field(..., description="Ranked results from this algorithm")
+    total: int = Field(..., ge=0, description="Total number of matching documents for this algorithm")
+    execution_time_ms: int = Field(..., ge=0, description="Query execution time for this algorithm in milliseconds")
+
+
+class MultiAlgorithmSearchResponse(BaseModel):
+    """
+    Response body for multi-algorithm search queries.
+    Contains results from each ranking algorithm, keyed by algorithm name.
+    Results within each algorithm are sorted by score (descending).
+    
+    Example:
+        {
+            "bm25": {
+                "results": [
+                    {"id": "1", "name": "Game", "score": 9.5, "rank": 1, "algorithm": "bm25", ...},
+                    {"id": "3", "name": "Another", "score": 7.8, "rank": 2, "algorithm": "bm25", ...}
+                ],
+                "total": 42,
+                "execution_time_ms": 120
+            },
+            "svm": {
+                "results": [
+                    {"id": "2", "name": "Game 2", "score": 95.2, "rank": 1, "algorithm": "svm", ...},
+                    {"id": "1", "name": "Game", "score": 88.5, "rank": 2, "algorithm": "svm", ...}
+                ],
+                "total": 42,
+                "execution_time_ms": 45
+            }
+        }
+    """
+    bm25: AlgorithmResult = Field(..., description="Results from BM25 algorithm")
+    svm: AlgorithmResult = Field(..., description="Results from SVM (TF-IDF + cosine similarity) algorithm")
