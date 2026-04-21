@@ -241,7 +241,7 @@ class RankedResult(GameResult):
     """
 
     score: float = Field(
-        ..., ge=0, le=100, description="Algorithm-specific relevance score (0-100)"
+        ..., ge=0, description="Algorithm-specific relevance score (raw Elasticsearch score)"
     )
     rank: int = Field(
         ...,

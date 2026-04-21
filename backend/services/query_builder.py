@@ -114,36 +114,24 @@ class QueryBuilder:
         """
         Build complete Elasticsearch query body from SearchRequest.
 
-        Combines multi_match query with optional filters.
+        Combines multi_match query with optional filters and boosts for data quality.
         Uses best_fields type to find documents where query terms appear together.
+        
+        Scoring adjustments:
+        - Boosts: non-null rating/aggregated_rating/release_date (data completeness),
+                  higher-rated games (aggregated_rating > 70, 50, 30 tiers)
+        - Negative boosts: games with "unofficial" or "fangame" keywords
 
         Args:
             request: SearchRequest with query text, fields, size, and optional filters
 
         Returns:
             Complete Elasticsearch query body ready for execution
-
-        Example:
-            {
-                "query": {
-                    "bool": {
-                        "must": [{
-                            "multi_match": {
-                                "query": "action adventure",
-                                "fields": ["name^3", "summary^1"],
-                                "type": "best_fields"
-                            }
-                        }],
-                        "filter": [...]  # optional
-                    }
-                },
-                "size": 10
-            }
         """
         formatted_fields = QueryBuilder.build_multi_match_query(request.fields)
         filter_clauses = QueryBuilder.build_filters(request.filters)
 
-        # Build the bool query
+        # Build the bool query with scoring adjustments
         bool_query: Dict[str, Any] = {
             "must": [
                 {
@@ -153,6 +141,46 @@ class QueryBuilder:
                         "type": "best_fields",
                     }
                 }
+            ],
+            "should": [
+                # Boost for data completeness
+                {"exists": {"field": "rating"}},
+                {"exists": {"field": "aggregated_rating"}},
+                {"exists": {"field": "release_date"}},
+                # Boost for higher-rated games (tiered scoring)
+                {
+                    "range": {
+                        "aggregated_rating": {
+                            "gte": 70,
+                            "boost": 5.0
+                        }
+                    }
+                },
+                {
+                    "range": {
+                        "aggregated_rating": {
+                            "gte": 50,
+                            "lt": 70,
+                            "boost": 2.0
+                        }
+                    }
+                },
+                {
+                    "range": {
+                        "aggregated_rating": {
+                            "gte": 30,
+                            "lt": 50,
+                            "boost": 1.0
+                        }
+                    }
+                },
+                # Negative boost for unofficial/fangame games
+                {
+                    "terms": {
+                        "keywords": ["unofficial", "fangame"],
+                        "boost": 0.1
+                    }
+                },
             ]
         }
 

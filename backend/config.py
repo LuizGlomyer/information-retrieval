@@ -81,7 +81,7 @@ return query.boost * tf * idf * norm;
 # ============================================================================
 
 # BM25 Index Configuration (Default Elasticsearch similarity)
-BM25_INDEX_NAME = "games"
+BM25_INDEX_NAME = "games_bm25"
 BM25_INDEX_CONFIG = {
     "settings": {
         "number_of_shards": 1,
