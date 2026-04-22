@@ -4,7 +4,7 @@ Handles multi-algorithm search execution, error handling, and response mapping.
 """
 
 import time
-from typing import Dict, Any
+from typing import Dict, Any, List
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError, NotFoundError, BadRequestError
 from models.search import (
@@ -134,6 +134,11 @@ class SearchService:
 
             # Execute search against BM25 index
             response = es_client.search(index=BM25_INDEX_NAME, body=query_body)
+            explanations = (
+                SearchService._extract_hit_explanations(response)
+                if request.explain
+                else None
+            )
 
             # Parse results
             total_count, results_data = SearchService._parse_es_response(response)
@@ -152,6 +157,7 @@ class SearchService:
                 results=ranked_results,
                 total=total_count,
                 execution_time_ms=execution_time_ms,
+                explanations=explanations,
             )
 
         except Exception as e:
@@ -188,6 +194,11 @@ class SearchService:
 
             # Execute search against SVM index (with scripted TF-IDF similarity)
             response = es_client.search(index=SVM_INDEX_NAME, body=query_body)
+            explanations = (
+                SearchService._extract_hit_explanations(response)
+                if request.explain
+                else None
+            )
 
             # Parse results - ES already calculated TF-IDF scores
             total_count, results_data = SearchService._parse_es_response(response)
@@ -204,6 +215,7 @@ class SearchService:
                 results=ranked_results,
                 total=total_count,
                 execution_time_ms=execution_time_ms,
+                explanations=explanations,
             )
 
         except Exception as e:
@@ -244,6 +256,19 @@ class SearchService:
 
         except (KeyError, TypeError) as e:
             raise ValueError(f"Failed to parse Elasticsearch response: {str(e)}")
+
+    @staticmethod
+    def _extract_hit_explanations(es_response: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract explanation payloads from ES hits for API response."""
+        hits = es_response.get("hits", {}).get("hits", [])
+        return [
+            {
+                "id": hit.get("_id", ""),
+                "score": float(hit.get("_score", 0.0)),
+                "explanation": hit.get("_explanation"),
+            }
+            for hit in hits
+        ]
 
     @staticmethod
     def _parse_response(es_response: Dict[str, Any]) -> SearchResponse:

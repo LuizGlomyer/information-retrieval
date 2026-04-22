@@ -10,21 +10,49 @@ http:
     type: json
     data: |-
       {
-        "query_text": "Super Mario",
-        "fields": [
+        "query_text": "Super Mario"
+        ,"explain": true
+      //   "query_text": "Mario Kart"
+        ,"size": 10
+        ,"fields": [
           {
             "field": "name",
-            "weight": 3
-          }
-          ,{
-            "field": "summary",
             "weight": 1
           }
       //     ,{
-      //       "field": "keywords"
+      //       "field": "summary",
+      //       "weight": 0.2
       //     }
-        ],
-        "size": 100
+          ,{
+            "field": "keywords",
+            "weight": 1
+          }
+          ,{
+            "field": "themes",
+            "weight": 1
+          }
+      //     ,{
+      //       "field": "category",
+      //       "weight": 1
+      //     }
+      //     ,{
+      //       "field": "genres",
+      //       "weight": 1
+      //     }
+      //     ,{
+      //       "field": "platforms",
+      //       "weight": 1
+      //     }
+      //     ,{
+      //       "field": "player_perspectives",
+      //       "weight": 1
+      //     }
+      //     ,{
+      //       "field": "game_modes",
+      //       "weight": 1
+      //     }
+          
+        ]
         ,"filters": {
           "genres": [
       //       "platform"

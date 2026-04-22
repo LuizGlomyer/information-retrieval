@@ -3,7 +3,7 @@ Pydantic models for search requests and responses.
 Provides data validation and type safety for the API.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from config import (
     SEARCHABLE_FIELDS,
@@ -133,6 +133,10 @@ class SearchRequest(BaseModel):
     )
     filters: Optional[FilterCriteria] = Field(
         None, description="Optional filtering criteria"
+    )
+    explain: bool = Field(
+        default=False,
+        description="Include Elasticsearch score explanations in response",
     )
 
     @field_validator("fields")
@@ -276,6 +280,10 @@ class AlgorithmResult(BaseModel):
     )
     execution_time_ms: int = Field(
         ..., ge=0, description="Query execution time for this algorithm in milliseconds"
+    )
+    explanations: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Per-hit Elasticsearch explanation payload when explain=true",
     )
 
 

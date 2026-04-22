@@ -114,13 +114,12 @@ class QueryBuilder:
         """
         Build complete Elasticsearch query body from SearchRequest.
 
-        Combines multi_match query with optional filters and boosts for data quality.
-        Uses best_fields type to find documents where query terms appear together.
-        
+        Combines multi_match query with optional filters and function_score boosting.
+        Uses most_fields type.
+
         Scoring adjustments:
-        - Boosts: non-null rating/aggregated_rating/release_date (data completeness),
-                  higher-rated games (aggregated_rating > 70, 50, 30 tiers)
-        - Negative boosts: games with "unofficial" or "fangame" keywords
+        - Smooth aggregated_rating contribution via field_value_factor with sqrt modifier
+        - Low boost on analyzed keyword text for "unofficial" or "fangame" tokens
 
         Args:
             request: SearchRequest with query text, fields, size, and optional filters
@@ -131,54 +130,26 @@ class QueryBuilder:
         formatted_fields = QueryBuilder.build_multi_match_query(request.fields)
         filter_clauses = QueryBuilder.build_filters(request.filters)
 
-        # Build the bool query with scoring adjustments
+        # Build the core bool query
         bool_query: Dict[str, Any] = {
             "must": [
                 {
                     "multi_match": {
                         "query": request.query_text,
                         "fields": formatted_fields,
-                        "type": "best_fields",
+                        "type": "most_fields",
                     }
                 }
             ],
             "should": [
-                # Boost for data completeness
-                {"exists": {"field": "rating"}},
-                {"exists": {"field": "aggregated_rating"}},
-                {"exists": {"field": "release_date"}},
-                # Boost for higher-rated games (tiered scoring)
+                # Low boost when analyzed keywords match unofficial/fangame tokens
                 {
-                    "range": {
-                        "aggregated_rating": {
-                            "gte": 70,
-                            "boost": 5.0
+                    "match": {
+                        "keywords": {
+                            "query": "unofficial fangame",
+                            "operator": "or",
+                            "boost": 0.1,
                         }
-                    }
-                },
-                {
-                    "range": {
-                        "aggregated_rating": {
-                            "gte": 50,
-                            "lt": 70,
-                            "boost": 2.0
-                        }
-                    }
-                },
-                {
-                    "range": {
-                        "aggregated_rating": {
-                            "gte": 30,
-                            "lt": 50,
-                            "boost": 1.0
-                        }
-                    }
-                },
-                # Negative boost for unofficial/fangame games
-                {
-                    "terms": {
-                        "keywords": ["unofficial", "fangame"],
-                        "boost": 0.1
                     }
                 },
             ]
@@ -188,7 +159,35 @@ class QueryBuilder:
         if filter_clauses:
             bool_query["filter"] = filter_clauses
 
-        # Build final body
-        body: Dict[str, Any] = {"query": {"bool": bool_query}, "size": request.size}
+        functions = [
+            {
+                "filter": {"exists": {"field": "aggregated_rating"}},
+                "field_value_factor": {
+                    "field": "aggregated_rating",
+                    "factor": 0.05,
+                    "modifier": "sqrt",
+                    "missing": 0,
+                },
+            },
+            {
+                "filter": {
+                    "terms": {"keywords": ["unofficial", "fangame", "fanmade"]}
+                },
+                "weight": 0.2,
+            },
+        ]
+
+        # Build final body with smooth aggregated_rating scoring
+        body: Dict[str, Any] = {
+            "query": {
+                "function_score": {
+                    "query": {"bool": bool_query},
+                    "functions": functions,
+                    "boost_mode": "multiply",
+                }
+            },
+            "size": request.size,
+            "explain": request.explain
+        }
 
         return body
