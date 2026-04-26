@@ -28,7 +28,7 @@ npm run dev
 3. Open the URL shown in the terminal. With the current Vite configuration, the default is:
 
 ```text
-http://localhost:8080
+http://localhost:8090
 ```
 
 ## Available Scripts

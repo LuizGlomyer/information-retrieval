@@ -28,7 +28,7 @@ npm run dev
 3. Abra o endereco exibido no terminal. Pela configuracao atual do Vite, o padrao e:
 
 ```text
-http://localhost:8080
+http://localhost:8090
 ```
 
 ## Scripts disponiveis
