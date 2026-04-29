@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Editorial / research design system. All colors HSL. */
+
+@layer base {
+  :root {
+    /* Paper-like editorial light theme */
+    --background: 40 30% 97%;
+    --foreground: 25 20% 12%;
+
+    --surface: 36 25% 94%;
+    --surface-foreground: 25 20% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 25 20% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 25 20% 12%;
+
+    --primary: 18 75% 42%;       /* warm rust accent */
+    --primary-foreground: 40 30% 97%;
+
+    --secondary: 36 20% 88%;
+    --secondary-foreground: 25 20% 12%;
+
+    --muted: 36 18% 92%;
+    --muted-foreground: 25 10% 42%;
+
+    --accent: 188 60% 38%;       /* teal, secondary accent */
+    --accent-foreground: 40 30% 97%;
+
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 40 30% 97%;
+
+    --border: 30 15% 85%;
+    --input: 30 15% 85%;
+    --ring: 18 75% 42%;
+
+    --radius: 0.5rem;
+
+    /* Chart palette aligned with theme */
+    --chart-1: 18 75% 42%;
+    --chart-2: 188 60% 38%;
+    --chart-3: 260 50% 50%;
+    --chart-4: 35 80% 50%;
+    --chart-5: 140 45% 40%;
+
+    --sidebar-background: 36 25% 94%;
+    --sidebar-foreground: 25 20% 12%;
+    --sidebar-primary: 18 75% 42%;
+    --sidebar-primary-foreground: 40 30% 97%;
+    --sidebar-accent: 36 20% 88%;
+    --sidebar-accent-foreground: 25 20% 12%;
+    --sidebar-border: 30 15% 85%;
+    --sidebar-ring: 18 75% 42%;
+  }
+
+  .dark {
+    --background: 25 18% 8%;
+    --foreground: 40 25% 92%;
+
+    --surface: 25 16% 11%;
+    --surface-foreground: 40 25% 92%;
+
+    --card: 25 18% 10%;
+    --card-foreground: 40 25% 92%;
+
+    --popover: 25 18% 10%;
+    --popover-foreground: 40 25% 92%;
+
+    --primary: 22 85% 58%;
+    --primary-foreground: 25 18% 8%;
+
+    --secondary: 25 12% 18%;
+    --secondary-foreground: 40 25% 92%;
+
+    --muted: 25 12% 16%;
+    --muted-foreground: 35 12% 62%;
+
+    --accent: 188 65% 55%;
+    --accent-foreground: 25 18% 8%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 40 25% 92%;
+
+    --border: 25 12% 20%;
+    --input: 25 12% 20%;
+    --ring: 22 85% 58%;
+
+    --chart-1: 22 85% 58%;
+    --chart-2: 188 65% 55%;
+    --chart-3: 270 60% 70%;
+    --chart-4: 40 85% 60%;
+    --chart-5: 140 50% 55%;
+
+    --sidebar-background: 25 16% 11%;
+    --sidebar-foreground: 40 25% 92%;
+    --sidebar-primary: 22 85% 58%;
+    --sidebar-primary-foreground: 25 18% 8%;
+    --sidebar-accent: 25 12% 18%;
+    --sidebar-accent-foreground: 40 25% 92%;
+    --sidebar-border: 25 12% 20%;
+    --sidebar-ring: 22 85% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    @apply bg-primary/25 text-foreground;
+  }
+}
+
+@layer utilities {
+  .font-serif-display {
+    font-family: 'Fraunces', 'Times New Roman', serif;
+    font-optical-sizing: auto;
+  }
+  .font-sans-body {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .font-mono-tech {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+
+  /* Subtle grain overlay used on hero / surfaces */
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  .divider-rule {
+    @apply h-px w-full bg-border;
+  }
+
+  .step-num {
+    font-family: 'Fraunces', serif;
+    font-feature-settings: "lnum", "tnum";
+  }
+}
+
+@layer components {
+  .editorial-link {
+    @apply underline decoration-primary/40 underline-offset-4 hover:decoration-primary transition-colors;
+  }
+
+  .badge-soft {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-mono-tech text-muted-foreground;
+  }
+}
