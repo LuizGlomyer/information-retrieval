@@ -3,6 +3,8 @@ Application configuration and constants.
 Centralize all settings for Elasticsearch connection and API limits.
 """
 
+from typing import List, Tuple
+
 # Elasticsearch Configuration
 ELASTICSEARCH_HOST = "localhost"
 ELASTICSEARCH_PORT = 9200
@@ -23,6 +25,20 @@ SEARCHABLE_FIELDS = [
     "platforms",
     "player_perspectives",
     "game_modes",
+]
+
+# multi_match fields and boosts for /search (BM25 + SVM indices use the same query body).
+# Each field must appear in SEARCHABLE_FIELDS; weights must be in [0.1, 10].
+DEFAULT_SEARCH_FIELD_WEIGHTS: List[Tuple[str, float]] = [
+    ("name", 3.0),
+    ("summary", 2.0),
+    ("keywords", 1.5),
+    ("themes", 1.0),
+    ("genres", 1.0),
+    ("category", 0.5),
+    ("platforms", 0.5),
+    ("player_perspectives", 0.5),
+    ("game_modes", 0.5),
 ]
 
 # ============================================================================

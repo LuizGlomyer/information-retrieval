@@ -4,43 +4,8 @@ Provides data validation and type safety for the API.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from config import (
-    SEARCHABLE_FIELDS,
-    DEFAULT_RESULT_SIZE,
-    MIN_RESULT_SIZE,
-    MAX_RESULT_SIZE,
-)
-
-
-class SearchField(BaseModel):
-    """
-    Represents a searchable field with optional weight.
-
-    Example:
-        {"field": "name", "weight": 2}
-        {"field": "summary"}  # weight defaults to 1
-    """
-
-    field: str = Field(
-        ..., description="Field name to search in (e.g., 'name', 'summary')"
-    )
-    weight: float = Field(
-        default=1,
-        ge=0.1,
-        le=10,
-        description="Field weight boost (0.1 to 10, default 1)",
-    )
-
-    @field_validator("field")
-    @classmethod
-    def validate_field_is_searchable(cls, v):
-        """Ensure the field is in the list of searchable fields."""
-        if v not in SEARCHABLE_FIELDS:
-            raise ValueError(
-                f"Field '{v}' is not searchable. Allowed fields: {', '.join(SEARCHABLE_FIELDS)}"
-            )
-        return v
+from pydantic import BaseModel, Field, ConfigDict
+from config import DEFAULT_RESULT_SIZE, MIN_RESULT_SIZE, MAX_RESULT_SIZE
 
 
 class DateRangeFilter(BaseModel):
@@ -104,14 +69,14 @@ class SearchRequest(BaseModel):
     """
     Main request body for dynamic search queries.
 
+    Field boosts for multi_match are fixed in ``config.DEFAULT_SEARCH_FIELD_WEIGHTS``;
+    clients do not send per-field weights.
+
     Example:
         {
             "query_text": "action adventure",
-            "fields": [
-                {"field": "name", "weight": 3},
-                {"field": "summary", "weight": 1}
-            ],
             "size": 10,
+            "explain": false,
             "filters": {
                 "genres": ["Action"],
                 "platforms": ["PC"]
@@ -119,11 +84,10 @@ class SearchRequest(BaseModel):
         }
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     query_text: str = Field(
         ..., min_length=1, max_length=500, description="Search query string"
-    )
-    fields: List[SearchField] = Field(
-        ..., min_items=1, description="Fields to search with weights"
     )
     size: int = Field(
         default=DEFAULT_RESULT_SIZE,
@@ -138,14 +102,6 @@ class SearchRequest(BaseModel):
         default=False,
         description="Include Elasticsearch score explanations in response",
     )
-
-    @field_validator("fields")
-    @classmethod
-    def validate_fields_not_empty(cls, v):
-        """Ensure at least one field is provided."""
-        if not v:
-            raise ValueError("At least one field must be provided")
-        return v
 
 
 class GameResult(BaseModel):

@@ -72,7 +72,7 @@ class SearchService:
 
         Args:
             es_client: Elasticsearch client instance
-            request: SearchRequest with query text, fields, size, filters
+            request: SearchRequest with query text, size, filters, optional explain
 
         Returns:
             MultiAlgorithmSearchResponse containing:

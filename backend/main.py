@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Information Retrieval API",
         version="0.2.0",
-        description="Multi-algorithm search API: BM25 + TF-IDF (SVM) with weighted fields and filtering",
+        description="Multi-algorithm search API: BM25 + TF-IDF (SVM) with config-driven field weights and filtering",
     )
 
     # Initialize Elasticsearch client
@@ -103,20 +103,18 @@ def create_app() -> FastAPI:
 
         **Request Body:**
         - `query_text`: (required) Search query string
-        - `fields`: (required) List of fields to search with optional weights (default weight: 1)
         - `size`: (optional) Number of results per algorithm (1-100, default: 5)
+        - `explain`: (optional) If true, include per-hit score explanations in each algorithm result
         - `filters`: (optional) Filter by genres, game_modes, platforms, player_perspectives, themes, date range, rating
+
+        Multi-match fields and boosts are defined in ``config.DEFAULT_SEARCH_FIELD_WEIGHTS`` (not sent by the client).
 
         **Example Request:**
         ```json
         {
             "query_text": "action adventure",
-            "fields": [
-                {"field": "name", "weight": 3},
-                {"field": "summary", "weight": 1},
-                {"field": "keywords"}
-            ],
             "size": 10,
+            "explain": false,
             "filters": {
                 "genres": ["Action", "Adventure"],
                 "platforms": ["PC"]
@@ -151,8 +149,8 @@ def create_app() -> FastAPI:
         }
         ```
 
-        - `bm25`: Results from Elasticsearch BM25 probabilistic ranking with field-weighted scoring
-        - `svm`: Results from Elasticsearch TF-IDF Vector Space Model (Scripted Similarity) with field-weighted scoring
+        - `bm25`: Results from Elasticsearch BM25 probabilistic ranking (field weights from server config)
+        - `svm`: Results from Elasticsearch TF-IDF Vector Space Model (Scripted Similarity; same query body and weights as BM25)
         - `results`: Ranked games with score, rank, and algorithm metadata
         - `total`: Total matching documents across all filters
         - `execution_time_ms`: Query execution time for each algorithm in milliseconds

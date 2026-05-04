@@ -4,7 +4,9 @@ Converts SearchRequest models to Elasticsearch query DSL.
 """
 
 from typing import Dict, Any, List, Optional
-from models.search import SearchRequest, SearchField, FilterCriteria
+
+from config import DEFAULT_SEARCH_FIELD_WEIGHTS
+from models.search import SearchRequest, FilterCriteria
 
 
 class QueryBuilder:
@@ -14,28 +16,19 @@ class QueryBuilder:
     """
 
     @staticmethod
-    def build_multi_match_query(fields: List[SearchField]) -> Dict[str, Any]:
+    def build_multi_match_fields() -> List[str]:
         """
-        Convert list of SearchField to Elasticsearch multi_match format.
+        Build multi_match `fields` list from config.DEFAULT_SEARCH_FIELD_WEIGHTS.
 
-        Converts:
-            [{"field": "name", "weight": 2}, {"field": "summary", "weight": 1}]
-        To:
-            ["name^2", "summary^1"]
-
-        Args:
-            fields: List of SearchField with field names and weights
-
-        Returns:
-            List of formatted field strings with weights
+        Example:
+            [("name", 2), ("summary", 1)] -> ["name^2", "summary"]
         """
-        formatted_fields = []
-        for field in fields:
-            weight = field.weight if field.weight != 1 else 1
+        formatted_fields: List[str] = []
+        for field, weight in DEFAULT_SEARCH_FIELD_WEIGHTS:
             if weight == 1:
-                formatted_fields.append(field.field)
+                formatted_fields.append(field)
             else:
-                formatted_fields.append(f"{field.field}^{weight}")
+                formatted_fields.append(f"{field}^{weight}")
         return formatted_fields
 
     @staticmethod
@@ -122,12 +115,12 @@ class QueryBuilder:
         - Low boost on analyzed keyword text for "unofficial" or "fangame" tokens
 
         Args:
-            request: SearchRequest with query text, fields, size, and optional filters
+            request: SearchRequest with query text, size, optional filters, optional explain
 
         Returns:
             Complete Elasticsearch query body ready for execution
         """
-        formatted_fields = QueryBuilder.build_multi_match_query(request.fields)
+        formatted_fields = QueryBuilder.build_multi_match_fields()
         filter_clauses = QueryBuilder.build_filters(request.filters)
 
         # Build the core bool query

@@ -1,7 +1,6 @@
 """Models package for API data structures."""
 
 from models.search import (
-    SearchField,
     SearchRequest,
     SearchResponse,
     GameResult,
@@ -11,7 +10,6 @@ from models.search import (
 )
 
 __all__ = [
-    "SearchField",
     "SearchRequest",
     "SearchResponse",
     "GameResult",
