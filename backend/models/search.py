@@ -4,7 +4,7 @@ Provides data validation and type safety for the API.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from config import DEFAULT_RESULT_SIZE, MIN_RESULT_SIZE, MAX_RESULT_SIZE
 
 
@@ -102,6 +102,40 @@ class SearchRequest(BaseModel):
         default=False,
         description="Include Elasticsearch score explanations in response",
     )
+    metrics: bool = Field(
+        default=False,
+        description=(
+            "If true, compute IR metrics per algorithm via ranx; "
+            "query_text (trimmed) must be a key in qrels.QUERY_QRELS mapping to a "
+            "non-empty doc_id -> relevance_grade dict"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_metrics_against_qrels(self) -> "SearchRequest":
+        if not self.metrics:
+            return self
+        from qrels import QUERY_QRELS, normalized_query_key
+
+        key = normalized_query_key(self.query_text)
+        if key not in QUERY_QRELS:
+            raise ValueError(
+                "metrics=true requires query_text (after strip) to be a key in "
+                f"qrels.QUERY_QRELS; missing key: {key!r}"
+            )
+        entry = QUERY_QRELS[key]
+        if not isinstance(entry, dict) or len(entry) == 0:
+            raise ValueError(
+                f"qrels.QUERY_QRELS[{key!r}] must be a non-empty dict of "
+                "document_id -> relevance_grade"
+            )
+        for doc_id, rel in entry.items():
+            if isinstance(rel, bool) or not isinstance(rel, (int, float)):
+                raise ValueError(
+                    f"invalid relevance grade for document {doc_id!r}: "
+                    "expected int or float (not bool)"
+                )
+        return self
 
 
 class GameResult(BaseModel):
@@ -213,6 +247,24 @@ class RankedResult(GameResult):
     )
 
 
+class RetrievalMetrics(BaseModel):
+    """IR metrics from ranx for one ranked list (graded qrels, run scores from the ranker)."""
+
+    precision_at_1: float = Field(..., ge=0.0, le=1.0)
+    precision_at_5: float = Field(..., ge=0.0, le=1.0)
+    precision_at_10: float = Field(..., ge=0.0, le=1.0)
+    mean_average_precision: float = Field(..., ge=0.0, le=1.0)
+    f1: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="ranx f1@10 (graded qrels)",
+    )
+    ndcg_at_1: float = Field(..., ge=0.0, le=1.0)
+    ndcg_at_5: float = Field(..., ge=0.0, le=1.0)
+    ndcg_at_10: float = Field(..., ge=0.0, le=1.0)
+
+
 class AlgorithmResult(BaseModel):
     """
     Contains results from a single ranking algorithm.
@@ -240,6 +292,10 @@ class AlgorithmResult(BaseModel):
     explanations: Optional[List[Dict[str, Any]]] = Field(
         default=None,
         description="Per-hit Elasticsearch explanation payload when explain=true",
+    )
+    metrics: Optional[RetrievalMetrics] = Field(
+        default=None,
+        description="IR metrics when request.metrics is true",
     )
 
 

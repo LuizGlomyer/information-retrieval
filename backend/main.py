@@ -105,6 +105,9 @@ def create_app() -> FastAPI:
         - `query_text`: (required) Search query string
         - `size`: (optional) Number of results per algorithm (1-100, default: 5)
         - `explain`: (optional) If true, include per-hit score explanations in each algorithm result
+        - `metrics`: (optional) If true, include IR metrics per algorithm (ranx: precision@k, map, f1@10, ndcg@k);
+          requires ``query_text.strip()`` to be a key in ``qrels.QUERY_QRELS`` with a non-empty
+          ``{document_id: relevance_grade}`` map (422 otherwise)
         - `filters`: (optional) Filter by genres, game_modes, platforms, player_perspectives, themes, date range, rating
 
         Multi-match fields and boosts are defined in ``config.DEFAULT_SEARCH_FIELD_WEIGHTS`` (not sent by the client).
@@ -154,6 +157,8 @@ def create_app() -> FastAPI:
         - `results`: Ranked games with score, rank, and algorithm metadata
         - `total`: Total matching documents across all filters
         - `execution_time_ms`: Query execution time for each algorithm in milliseconds
+        - `metrics`: When ``metrics`` was true in the request, each algorithm block includes
+          ``precision_at_*``, ``mean_average_precision``, ``f1``, ``ndcg_at_*`` (ranx on graded qrels)
         """
         try:
             response = SearchService.execute_search(

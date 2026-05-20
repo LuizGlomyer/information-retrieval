@@ -16,7 +16,9 @@ from models.search import (
     RankedResult,
 )
 from services.query_builder import QueryBuilder
+from services.retrieval_metrics import compute_retrieval_metrics
 from config import BM25_INDEX_NAME, SVM_INDEX_NAME
+from qrels import graded_qrels_for_query, normalized_query_key
 
 
 class SearchService:
@@ -95,6 +97,24 @@ class SearchService:
             svm_result = SearchService._execute_svm(
                 es_client=es_client, request=request
             )
+
+            if request.metrics:
+                qid = normalized_query_key(request.query_text)
+                grades = graded_qrels_for_query(request.query_text)
+                bm25_result = bm25_result.model_copy(
+                    update={
+                        "metrics": compute_retrieval_metrics(
+                            qid, bm25_result.results, grades
+                        ),
+                    }
+                )
+                svm_result = svm_result.model_copy(
+                    update={
+                        "metrics": compute_retrieval_metrics(
+                            qid, svm_result.results, grades
+                        ),
+                    }
+                )
 
             return MultiAlgorithmSearchResponse(bm25=bm25_result, svm=svm_result)
 

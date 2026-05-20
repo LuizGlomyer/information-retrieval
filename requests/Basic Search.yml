@@ -10,8 +10,9 @@ http:
     type: json
     data: |-
       {
-        "query_text": "Super Mario",
-        "explain": true,
+        "query_text": "super mario",
+        "explain": false,
+        "metrics": true,
         "size": 10,
         "filters": {
           "genres": [
