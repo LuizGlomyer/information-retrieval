@@ -18,7 +18,7 @@ from typing import Dict, Union
 
 # Document ids should be strings (e.g. "2191") for consistency with API ``id`` fields.
 QUERY_QRELS: Dict[str, Dict[str, Union[int, float]]] = {
-    "super mario": {"21919": 3,},
+    "super mario": {"21919": 3, "1077": 3},
 }
 
 
@@ -30,8 +30,15 @@ def normalized_query_key(query_text: str) -> str:
 def graded_qrels_for_query(query_text: str) -> dict[str, float]:
     """
     Return doc_id -> relevance grade for the normalized query key.
-    Caller must ensure the key exists in ``QUERY_QRELS``.
+
+    Returns an empty dict when the query is not in ``QUERY_QRELS`` or has no grades.
     """
     key = normalized_query_key(query_text)
-    raw = QUERY_QRELS[key]
-    return {str(doc_id): float(grade) for doc_id, grade in raw.items()}
+    raw = QUERY_QRELS.get(key)
+    if not raw:
+        return {}
+    return {
+        str(doc_id): float(grade)
+        for doc_id, grade in raw.items()
+        if isinstance(grade, (int, float)) and not isinstance(grade, bool)
+    }

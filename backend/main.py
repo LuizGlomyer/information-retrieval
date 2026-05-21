@@ -15,6 +15,7 @@ from config import (
 from models.search import (
     SearchRequest,
     MultiAlgorithmSearchResponse,
+    Bm25IdNameSearchResponse,
     FiltersResponse,
 )
 from services.search import SearchService
@@ -103,11 +104,11 @@ def create_app() -> FastAPI:
 
         **Request Body:**
         - `query_text`: (required) Search query string
-        - `size`: (optional) Number of results per algorithm (1-100, default: 5)
+        - `size`: (optional) Number of results per algorithm (1-1000, default: 5)
         - `explain`: (optional) If true, include per-hit score explanations in each algorithm result
-        - `metrics`: (optional) If true, include IR metrics per algorithm (ranx: precision@k, map, f1@10, ndcg@k);
-          requires ``query_text.strip()`` to be a key in ``qrels.QUERY_QRELS`` with a non-empty
-          ``{document_id: relevance_grade}`` map (422 otherwise)
+        - `metrics`: (optional) If true, include IR metrics per algorithm (ranx);
+          uses ``qrels.QUERY_QRELS`` when ``query_text.strip()`` matches a key, otherwise all metrics are zero.
+          ``*_at_5`` (including ``f1_at_5``) when ``size >= 5``; ``*_at_10`` (including ``f1_at_10``) when ``size >= 10``
         - `filters`: (optional) Filter by genres, game_modes, platforms, player_perspectives, themes, date range, rating
 
         Multi-match fields and boosts are defined in ``config.DEFAULT_SEARCH_FIELD_WEIGHTS`` (not sent by the client).
@@ -157,14 +158,49 @@ def create_app() -> FastAPI:
         - `results`: Ranked games with score, rank, and algorithm metadata
         - `total`: Total matching documents across all filters
         - `execution_time_ms`: Query execution time for each algorithm in milliseconds
-        - `metrics`: When ``metrics`` was true in the request, each algorithm block includes
-          ``precision_at_*``, ``mean_average_precision``, ``f1``, ``ndcg_at_*`` (ranx on graded qrels)
+        - `metrics`: When ``metrics`` was true, each algorithm block includes ``precision_at_1``,
+          ``ndcg_at_1``, ``recall_at_1``, ``mean_average_precision``; ``*_at_5`` when ``size >= 5``;
+          ``*_at_10`` and ``f1_at_10`` when ``size >= 10`` (omitted otherwise)
         """
         try:
             response = SearchService.execute_search(
                 es_client=app.state.es_client, request=request
             )
             return response
+
+        except (ConnectionError, NotFoundError) as e:
+            raise HTTPException(
+                status_code=503, detail=f"Elasticsearch error: {str(e)}"
+            )
+        except BadRequestError as e:
+            raise HTTPException(
+                status_code=400, detail=f"Invalid search query: {str(e)}"
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Search error: {str(e)}")
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Internal server error: {str(e)}"
+            )
+
+    @app.post(
+        "/search/bm25-resumed",
+        response_model=Bm25IdNameSearchResponse,
+        tags=["Search"],
+        summary="BM25 Search (id and name only)",
+        description="BM25-ranked search returning only game id and name per hit",
+    )
+    async def search_bm25_id_name(request: SearchRequest):
+        """
+        Execute a BM25 search and return only ``id`` and ``name`` for each hit.
+
+        Uses the same request body as ``POST /search`` (query text, size, filters).
+        ``explain`` and ``metrics`` are ignored on this endpoint.
+        """
+        try:
+            return SearchService.execute_bm25_id_name_search(
+                es_client=app.state.es_client, request=request
+            )
 
         except (ConnectionError, NotFoundError) as e:
             raise HTTPException(

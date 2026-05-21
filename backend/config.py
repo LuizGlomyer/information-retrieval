@@ -11,7 +11,7 @@ ELASTICSEARCH_PORT = 9200
 
 # Search Limits
 DEFAULT_RESULT_SIZE = 5
-MAX_RESULT_SIZE = 100
+MAX_RESULT_SIZE = 1000
 MIN_RESULT_SIZE = 1
 
 # Supported fields for searching

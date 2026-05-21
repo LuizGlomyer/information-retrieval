@@ -140,7 +140,7 @@ Execute a dynamic search with weighted fields and optional filtering.
 | `fields` | array | ✓ | - | Fields to search with optional weights |
 | `fields[].field` | string | ✓ | - | Field name (e.g., "name", "summary") |
 | `fields[].weight` | number | ✗ | 1 | Weight/boost factor (0.1-10) |
-| `size` | integer | ✗ | 5 | Results per page (1-100) |
+| `size` | integer | ✗ | 5 | Results per page (1-1000) |
 | `filters` | object | ✗ | null | Optional filtering criteria |
 | `filters.genres` | array | ✗ | - | Filter by any of these genres |
 | `filters.game_modes` | array | ✗ | - | Filter by any of these game modes |
@@ -327,7 +327,7 @@ Validation error:
     {
       "type": "value_error",
       "loc": ["body", "size"],
-      "msg": "Input should be less than or equal to 100",
+      "msg": "Input should be less than or equal to 1000",
       "input": 150
     }
   ],
@@ -367,7 +367,7 @@ ELASTICSEARCH_INDEX = "games"
 
 # Search Limits
 DEFAULT_RESULT_SIZE = 5
-MAX_RESULT_SIZE = 100
+MAX_RESULT_SIZE = 1000
 MIN_RESULT_SIZE = 1
 
 # Searchable Fields

@@ -4,7 +4,7 @@ Provides data validation and type safety for the API.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_serializer
 from config import DEFAULT_RESULT_SIZE, MIN_RESULT_SIZE, MAX_RESULT_SIZE
 
 
@@ -105,37 +105,30 @@ class SearchRequest(BaseModel):
     metrics: bool = Field(
         default=False,
         description=(
-            "If true, compute IR metrics per algorithm via ranx; "
-            "query_text (trimmed) must be a key in qrels.QUERY_QRELS mapping to a "
-            "non-empty doc_id -> relevance_grade dict"
+            "If true, compute IR metrics per algorithm via ranx using graded qrels "
+            "when query_text (trimmed) is a key in qrels.QUERY_QRELS; otherwise all "
+            "metrics are zero"
         ),
     )
 
-    @model_validator(mode="after")
-    def validate_metrics_against_qrels(self) -> "SearchRequest":
-        if not self.metrics:
-            return self
-        from qrels import QUERY_QRELS, normalized_query_key
 
-        key = normalized_query_key(self.query_text)
-        if key not in QUERY_QRELS:
-            raise ValueError(
-                "metrics=true requires query_text (after strip) to be a key in "
-                f"qrels.QUERY_QRELS; missing key: {key!r}"
-            )
-        entry = QUERY_QRELS[key]
-        if not isinstance(entry, dict) or len(entry) == 0:
-            raise ValueError(
-                f"qrels.QUERY_QRELS[{key!r}] must be a non-empty dict of "
-                "document_id -> relevance_grade"
-            )
-        for doc_id, rel in entry.items():
-            if isinstance(rel, bool) or not isinstance(rel, (int, float)):
-                raise ValueError(
-                    f"invalid relevance grade for document {doc_id!r}: "
-                    "expected int or float (not bool)"
-                )
-        return self
+class GameIdName(BaseModel):
+    """Minimal game fields for BM25 id/name-only responses."""
+
+    id: str = Field(..., description="Game ID")
+    name: str = Field(..., description="Game name")
+
+
+class Bm25IdNameSearchResponse(BaseModel):
+    """BM25 search response with only id and name per hit."""
+
+    results: List[GameIdName] = Field(
+        ..., description="BM25-ranked games (id and name only)"
+    )
+    total: int = Field(..., ge=0, description="Total number of matching documents")
+    execution_time_ms: int = Field(
+        ..., ge=0, description="BM25 query execution time in milliseconds"
+    )
 
 
 class GameResult(BaseModel):
@@ -235,7 +228,9 @@ class RankedResult(GameResult):
     """
 
     score: float = Field(
-        ..., ge=0, description="Algorithm-specific relevance score (raw Elasticsearch score)"
+        ...,
+        ge=0,
+        description="Algorithm-specific relevance score (raw Elasticsearch score)",
     )
     rank: int = Field(
         ...,
@@ -250,19 +245,44 @@ class RankedResult(GameResult):
 class RetrievalMetrics(BaseModel):
     """IR metrics from ranx for one ranked list (graded qrels, run scores from the ranker)."""
 
+    model_config = ConfigDict(ser_json_exclude_none=True)
+
     precision_at_1: float = Field(..., ge=0.0, le=1.0)
-    precision_at_5: float = Field(..., ge=0.0, le=1.0)
-    precision_at_10: float = Field(..., ge=0.0, le=1.0)
+    precision_at_5: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Included when request size >= 5"
+    )
+    precision_at_10: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Included when request size >= 10"
+    )
     mean_average_precision: float = Field(..., ge=0.0, le=1.0)
-    f1: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="ranx f1@10 (graded qrels)",
+    f1_at_1: float = Field(..., ge=0.0, le=1.0)
+    f1_at_5: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Included when request size >= 5"
+    )
+    f1_at_10: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Included when request size >= 10"
     )
     ndcg_at_1: float = Field(..., ge=0.0, le=1.0)
-    ndcg_at_5: float = Field(..., ge=0.0, le=1.0)
-    ndcg_at_10: float = Field(..., ge=0.0, le=1.0)
+    ndcg_at_5: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Included when request size >= 5"
+    )
+    ndcg_at_10: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Included when request size >= 10"
+    )
+    recall_at_1: float = Field(..., ge=0.0, le=1.0)
+    recall_at_5: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Included when request size >= 5"
+    )
+    recall_at_10: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Included when request size >= 10"
+    )
+
+    @model_serializer(mode="wrap")
+    def _serialize(self, serializer, info):
+        data = serializer(self)
+        if info.mode == "json":
+            return {key: value for key, value in data.items() if value is not None}
+        return data
 
 
 class AlgorithmResult(BaseModel):

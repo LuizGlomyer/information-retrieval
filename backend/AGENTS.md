@@ -59,13 +59,13 @@ ELASTICSEARCH_PORT = 9200
 BM25_INDEX_NAME = "games_bm25"
 SVM_INDEX_NAME = "games_svm"
 DEFAULT_RESULT_SIZE = 5
-MAX_RESULT_SIZE = 100
+MAX_RESULT_SIZE = 1000
 SEARCHABLE_FIELDS = ["name", "summary", "keywords", "themes", ...]
 DEFAULT_SEARCH_FIELD_WEIGHTS = [("name", 3.0), ("summary", 2.0), ...]  # multi_match fields^boost
 ```
 
 #### `models/search.py` - Data Validation
-- **`SearchRequest`** - Query text, optional `explain`, optional filters, result size (1-100); no per-request field list
+- **`SearchRequest`** - Query text, optional `explain`, optional filters, result size (1-1000); no per-request field list
 - **`FilterCriteria`** - Genres, platforms, themes, date range, rating range (all ANDed)
 - **`GameResult`** - Single game document with all metadata
 - **`RankedResult`** - Extends GameResult with `score`, `rank`, and `algorithm` fields
@@ -252,7 +252,7 @@ The response now contains results from both BM25 and SVM algorithms:
 ### Type Safety
 - All requests/responses validated via Pydantic
 - `SearchRequest` rejects unknown keys (`extra="forbid"`)
-- Result size bounds enforced (1-100)
+- Result size bounds enforced (1-1000)
 - Default search field weights validated at import time in `config.py`
 
 ### Error Handling

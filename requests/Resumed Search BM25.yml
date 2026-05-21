@@ -1,0 +1,30 @@
+info:
+  name: Resumed Search BM25
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: http://localhost:8080/search/bm25-resumed
+  body:
+    type: json
+    data: |-
+      {
+        "query_text": "super mario",
+        "explain": false,
+        "metrics": true,
+        "size": 1000,
+        "filters": {
+          "genres": [
+            //       "platform"
+      //       "Role-playing (RPG)"
+          ]
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

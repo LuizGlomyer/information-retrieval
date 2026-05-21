@@ -29,7 +29,7 @@ class IndexManager:
         """Parse string representation of list."""
         try:
             return ast.literal_eval(value) if value else []
-        except (ValueError, SyntaxError):
+        except ValueError, SyntaxError:
             return []
 
     @staticmethod
@@ -37,7 +37,7 @@ class IndexManager:
         """Parse float value with None fallback."""
         try:
             return float(value) if value else None
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     @staticmethod

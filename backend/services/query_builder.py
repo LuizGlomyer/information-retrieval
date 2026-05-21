@@ -145,7 +145,7 @@ class QueryBuilder:
                         }
                     }
                 },
-            ]
+            ],
         }
 
         # Add filters if any exist
@@ -163,9 +163,7 @@ class QueryBuilder:
                 },
             },
             {
-                "filter": {
-                    "terms": {"keywords": ["unofficial", "fangame", "fanmade"]}
-                },
+                "filter": {"terms": {"keywords": ["unofficial", "fangame", "fanmade"]}},
                 "weight": 0.2,
             },
         ]
@@ -180,7 +178,7 @@ class QueryBuilder:
                 }
             },
             "size": request.size,
-            "explain": request.explain
+            "explain": request.explain,
         }
 
         return body

@@ -11,6 +11,8 @@ from models.search import (
     SearchRequest,
     SearchResponse,
     GameResult,
+    GameIdName,
+    Bm25IdNameSearchResponse,
     MultiAlgorithmSearchResponse,
     AlgorithmResult,
     RankedResult,
@@ -53,6 +55,30 @@ class SearchService:
         """
         return SearchService.execute_multi_algorithm_search(
             es_client=es_client, request=request
+        )
+
+    @staticmethod
+    def execute_bm25_id_name_search(
+        es_client: Elasticsearch, request: SearchRequest
+    ) -> Bm25IdNameSearchResponse:
+        """
+        Execute BM25 search and return only id and name per hit.
+
+        Args:
+            es_client: Elasticsearch client instance
+            request: SearchRequest with query parameters
+
+        Returns:
+            Bm25IdNameSearchResponse with slim result rows
+        """
+        bm25_result = SearchService._execute_bm25(es_client=es_client, request=request)
+        return Bm25IdNameSearchResponse(
+            results=[
+                GameIdName(id=result.id, name=result.name)
+                for result in bm25_result.results
+            ],
+            total=bm25_result.total,
+            execution_time_ms=bm25_result.execution_time_ms,
         )
 
     @staticmethod
@@ -104,14 +130,14 @@ class SearchService:
                 bm25_result = bm25_result.model_copy(
                     update={
                         "metrics": compute_retrieval_metrics(
-                            qid, bm25_result.results, grades
+                            qid, bm25_result.results, grades, request.size
                         ),
                     }
                 )
                 svm_result = svm_result.model_copy(
                     update={
                         "metrics": compute_retrieval_metrics(
-                            qid, svm_result.results, grades
+                            qid, svm_result.results, grades, request.size
                         ),
                     }
                 )
