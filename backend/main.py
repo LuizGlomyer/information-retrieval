@@ -14,6 +14,7 @@ from config import (
 )
 from models.search import (
     SearchRequest,
+    Bm25IdNameSearchRequest,
     MultiAlgorithmSearchResponse,
     Bm25IdNameSearchResponse,
     FiltersResponse,
@@ -186,15 +187,17 @@ def create_app() -> FastAPI:
     @app.post(
         "/search/bm25-resumed",
         response_model=Bm25IdNameSearchResponse,
+        response_model_exclude_none=True,
         tags=["Search"],
-        summary="BM25 Search (id and name only)",
-        description="BM25-ranked search returning only game id and name per hit",
+        summary="BM25 resumed search (id, name, optional platforms)",
+        description="BM25-ranked search returning game id and name, and optionally platforms per hit when name_only is false.",
     )
-    async def search_bm25_id_name(request: SearchRequest):
+    async def search_bm25_id_name(request: Bm25IdNameSearchRequest):
         """
-        Execute a BM25 search and return only ``id`` and ``name`` for each hit.
+        Execute a BM25 search and return ``id`` and ``name`` for each hit by default.
 
-        Uses the same request body as ``POST /search`` (query text, size, filters).
+        If ``name_only`` is false, results also include ``platforms``.
+        Uses the same request body fields as ``POST /search`` plus ``name_only``.
         ``explain`` and ``metrics`` are ignored on this endpoint.
         """
         try:

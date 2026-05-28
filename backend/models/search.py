@@ -112,18 +112,28 @@ class SearchRequest(BaseModel):
     )
 
 
+class Bm25IdNameSearchRequest(SearchRequest):
+    """BM25 resumed search request with optional name-only mode."""
+
+    name_only: bool = Field(
+        default=False,
+        description="If true, return only the game id and name in each result.",
+    )
+
+
 class GameIdName(BaseModel):
-    """Minimal game fields for BM25 id/name-only responses."""
+    """Minimal game fields for BM25 resumed search responses."""
 
     id: str = Field(..., description="Game ID")
     name: str = Field(..., description="Game name")
+    platforms: Optional[List[str]] = Field(None, description="Game platforms")
 
 
 class Bm25IdNameSearchResponse(BaseModel):
-    """BM25 search response with only id and name per hit."""
+    """BM25 search response with id, name, and platforms per hit."""
 
     results: List[GameIdName] = Field(
-        ..., description="BM25-ranked games (id and name only)"
+        ..., description="BM25-ranked games (id, name, and platforms)"
     )
     total: int = Field(..., ge=0, description="Total number of matching documents")
     execution_time_ms: int = Field(

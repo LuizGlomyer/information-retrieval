@@ -9,6 +9,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError, NotFoundError, BadRequestError
 from models.search import (
     SearchRequest,
+    Bm25IdNameSearchRequest,
     SearchResponse,
     GameResult,
     GameIdName,
@@ -59,10 +60,10 @@ class SearchService:
 
     @staticmethod
     def execute_bm25_id_name_search(
-        es_client: Elasticsearch, request: SearchRequest
+        es_client: Elasticsearch, request: Bm25IdNameSearchRequest
     ) -> Bm25IdNameSearchResponse:
         """
-        Execute BM25 search and return only id and name per hit.
+        Execute BM25 search and return id, name, and platforms per hit.
 
         Args:
             es_client: Elasticsearch client instance
@@ -74,7 +75,11 @@ class SearchService:
         bm25_result = SearchService._execute_bm25(es_client=es_client, request=request)
         return Bm25IdNameSearchResponse(
             results=[
-                GameIdName(id=result.id, name=result.name)
+                GameIdName(
+                    id=result.id,
+                    name=result.name,
+                    platforms=None if request.name_only else result.platforms,
+                )
                 for result in bm25_result.results
             ],
             total=bm25_result.total,
