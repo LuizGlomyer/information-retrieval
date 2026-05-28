@@ -62,7 +62,7 @@ export const translations = {
           title: "Corpus ingestion",
           desc:
             "Game records normalized and indexed into Elasticsearch with a typed mapping (name, summary, genres, themes, platforms, ratings).",
-          output: "12,438 documents - 11 fields",
+          output: "232,595 documents - 11 fields",
         },
         {
           title: "Text preprocessing",
@@ -77,10 +77,10 @@ export const translations = {
           output: "Latency: ~120 ms",
         },
         {
-          title: "Hybrid layer - BM25 + Embeddings",
+          title: "Vector Space Model - SVM",
           desc:
-            "Dense embeddings rescore the top-k from weighted BM25 via reciprocal rank fusion. Recovers queries with paraphrased vocabulary.",
-          output: "Latency: ~210 ms",
+            "Scripted Similarity vector space model based on TF-IDF term frequency and cosine similarity. It ranks documents using custom similarity scoring directly inside Elasticsearch.",
+          output: "Latency: ~110 ms",
         },
         {
           title: "Neural reranking - BERT",
@@ -92,14 +92,14 @@ export const translations = {
           title: "Evaluation harness",
           desc:
             "Each model is scored on the same labeled query set across nine IR metrics. Results are versioned per experiment.",
-          output: "9 metrics - 5 models",
+          output: "9 metrics - 4 models",
         },
       ],
     },
     models: {
       heading: {
         eyebrow: "02 - Models",
-        title: "Five rankers, two families",
+        title: "Four rankers, two families",
         lede:
           "Lexical models are fast, transparent and stubborn about vocabulary. Neural models are slower, opaque and forgiving. We ship both and let the queries decide.",
       },
@@ -112,17 +112,11 @@ export const translations = {
             "Elasticsearch's native ranking. Term frequency, inverse document frequency and length normalization on each searchable field.",
           techniques: ["TF-IDF", "Length norm", "Multi-match"],
         },
-        bm25_weighted: {
-          tagline: "BM25 with hand-tuned field boosts",
+        svm: {
+          tagline: "Vector Space Model",
           description:
-            "Same algorithm with per-field boosts (e.g. name^3, summary^1). Encodes editorial priors about where a match matters most.",
-          techniques: ["Field boosts", "Editorial priors"],
-        },
-        bm25_weighted_embeddings: {
-          tagline: "Hybrid: lexical + dense vectors",
-          description:
-            "Combines weighted BM25 with a dense semantic similarity layer. Rescues queries where vocabulary doesn't match but meaning does.",
-          techniques: ["Hybrid retrieval", "Dense vectors", "Reciprocal rank fusion"],
+            "Support Vector Model scoring based on TF-IDF term frequency and cosine similarity. Provides an alternative mathematical ranking perspective.",
+          techniques: ["TF-IDF", "Cosine similarity", "Vector space"],
         },
         bert: {
           tagline: "Pre-trained transformer encoder",
@@ -230,7 +224,7 @@ export const translations = {
           title: "Ingestão do corpus",
           desc:
             "Registros de jogos normalizados e indexados no Elasticsearch com um mapeamento tipado (nome, resumo, gêneros, temas, plataformas, avaliações).",
-          output: "12.438 documentos - 11 campos"
+          output: "232.595 documentos - 11 campos"
         },
         {
           title: "Pré-processamento de texto",
@@ -245,10 +239,10 @@ export const translations = {
           output: "Latência: ~120 ms",
         },
         {
-          title: "Camada hibrida - BM25 + Embeddings",
+          title: "Modelo de Vetor Espacial - SVM",
           desc:
-            "Embeddings densos reordenam o top-k do BM25 ponderado via reciprocal rank fusion. Recupera consultas com vocabulário parafraseado.",
-          output: "Latência: ~210 ms",
+            "Ranqueamento baseado em frequência de termos TF-IDF e similaridade de cosseno (Vector Space Model). Executa uma similaridade roteirizada customizada diretamente no Elasticsearch.",
+          output: "Latência: ~110 ms",
         },
         {
           title: "Re-ranking neural - BERT",
@@ -260,14 +254,14 @@ export const translations = {
           title: "Esteira de avaliacao",
           desc:
             "Cada modelo e pontuado no mesmo conjunto de consultas rotuladas usando nove metricas de RI. Os resultados sao versionados por experimento.",
-          output: "9 metricas - 5 modelos",
+          output: "9 métricas - 4 modelos",
         },
       ],
     },
     models: {
       heading: {
         eyebrow: "02 - Modelos",
-        title: "Cinco rankers, duas familias",
+        title: "Quatro rankers, duas famílias",
         lede:
           "Modelos lexicais sao rapidos, transparentes e rigidos com vocabulario. Modelos neurais sao mais lentos, opacos e tolerantes. Usamos os dois e deixamos as consultas decidirem.",
       },
@@ -280,17 +274,11 @@ export const translations = {
             "Ranking nativo do Elasticsearch. Frequencia do termo, frequencia inversa do documento e normalizacao de tamanho em cada campo pesquisavel.",
           techniques: ["TF-IDF", "Normalizacao", "Multi-match"],
         },
-        bm25_weighted: {
-          tagline: "BM25 com pesos manuais por campo",
+        svm: {
+          tagline: "Modelo de Vetor Espacial",
           description:
-            "Mesmo algoritmo com boosts por campo (ex.: name^3, summary^1). Codifica prioridades editoriais sobre onde uma correspondencia importa mais.",
-          techniques: ["Boost por campo", "Prioridades editoriais"],
-        },
-        bm25_weighted_embeddings: {
-          tagline: "Hibrido: lexical + vetores densos",
-          description:
-            "Combina BM25 ponderado com uma camada semantica densa. Recupera consultas quando o vocabulario nao coincide, mas o significado sim.",
-          techniques: ["Recuperacao hibrida", "Vetores densos", "Reciprocal rank fusion"],
+            "Ranqueamento baseado em frequência de termos TF-IDF e similaridade de cosseno (Vector Space Model). Fornece uma perspectiva de ranqueamento alternativa.",
+          techniques: ["TF-IDF", "Similaridade de cosseno", "Espaço vetorial"],
         },
         bert: {
           tagline: "Encoder transformer pre-treinado",

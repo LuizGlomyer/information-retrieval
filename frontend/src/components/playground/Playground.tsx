@@ -13,11 +13,10 @@ export const Playground = () => {
   const { t } = useLanguage();
   const [query, setQuery] = useState(t.playground.defaultQuery);
   const [mode, setMode] = useState<Mode>("compare");
-  const [activeModel, setActiveModel] = useState<ModelId>("bm25_weighted");
+  const [activeModel, setActiveModel] = useState<ModelId>("svm");
   const [selectedModels, setSelectedModels] = useState<ModelId[]>([
     "bm25",
-    "bm25_weighted",
-    "bm25_weighted_embeddings",
+    "svm",
   ]);
   const [response, setResponse] = useState<MultiAlgorithmSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);

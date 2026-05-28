@@ -3,11 +3,13 @@ Application configuration and constants.
 Centralize all settings for Elasticsearch connection and API limits.
 """
 
+import os
 from typing import List, Tuple
 
-# Elasticsearch Configuration
-ELASTICSEARCH_HOST = "localhost"
-ELASTICSEARCH_PORT = 9200
+# Elasticsearch Configuration — reads from env vars (Docker) or falls back to localhost
+ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "localhost")
+ELASTICSEARCH_PORT = int(os.getenv("ELASTICSEARCH_PORT", "9200"))
+
 
 # Search Limits
 DEFAULT_RESULT_SIZE = 5

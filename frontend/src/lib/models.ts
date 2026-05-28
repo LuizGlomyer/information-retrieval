@@ -13,26 +13,15 @@ export const MODELS: ModelMeta[] = [
     status: "stable",
   },
   {
-    id: "bm25_weighted",
-    name: "BM25 + Field Weights",
-    shortName: "BM25 + W",
+    id: "svm",
+    name: "SVM",
+    shortName: "SVM",
     family: "lexical",
-    tagline: "BM25 with hand-tuned field boosts",
+    tagline: "Support Vector Machine ranking",
     description:
-      "Same algorithm with per-field boosts (e.g. name^3, summary^1). Encodes editorial priors about where a match matters most.",
-    techniques: ["Field boosts", "Editorial priors"],
+      "Scripted Similarity vector space model based on TF-IDF term frequency and cosine similarity.",
+    techniques: ["TF-IDF", "Cosine similarity", "Vector space"],
     status: "stable",
-  },
-  {
-    id: "bm25_weighted_embeddings",
-    name: "BM25 + W + Embeddings",
-    shortName: "BM25 + W + E",
-    family: "lexical",
-    tagline: "Hybrid: lexical + dense vectors",
-    description:
-      "Combines weighted BM25 with a dense semantic similarity layer. Rescues queries where vocabulary doesn't match but meaning does.",
-    techniques: ["Hybrid retrieval", "Dense vectors", "Reciprocal rank fusion"],
-    status: "experimental",
   },
   {
     id: "bert",
@@ -77,15 +66,10 @@ export const MODEL_METRICS: Record<string, MetricScores> = {
     R: 0.41, MAP: 0.46, F1: 0.49,
     "NDCG@1": 0.62, "NDCG@5": 0.58, "NDCG@10": 0.55,
   },
-  bm25_weighted: {
+  svm: {
     "P@1": 0.71, "P@5": 0.61, "P@10": 0.55,
     R: 0.48, MAP: 0.55, F1: 0.57,
     "NDCG@1": 0.71, "NDCG@5": 0.66, "NDCG@10": 0.62,
-  },
-  bm25_weighted_embeddings: {
-    "P@1": 0.78, "P@5": 0.68, "P@10": 0.61,
-    R: 0.59, MAP: 0.63, F1: 0.65,
-    "NDCG@1": 0.78, "NDCG@5": 0.73, "NDCG@10": 0.70,
   },
   bert: {
     "P@1": 0.74, "P@5": 0.65, "P@10": 0.59,
@@ -104,7 +88,7 @@ export const PIPELINE_STEPS = [
     n: "01",
     title: "Corpus ingestion",
     desc: "Game records normalized and indexed into Elasticsearch with a typed mapping (name, summary, genres, themes, platforms, ratings).",
-    output: "12,438 documents · 11 fields",
+    output: "232,595 documents · 11 fields",
   },
   {
     n: "02",
@@ -120,9 +104,9 @@ export const PIPELINE_STEPS = [
   },
   {
     n: "04",
-    title: "Hybrid layer — BM25 + Embeddings",
-    desc: "Dense embeddings rescore the top-k from weighted BM25 via reciprocal rank fusion. Recovers queries with paraphrased vocabulary.",
-    output: "Latency: ~210 ms",
+    title: "Vector Space Model — SVM",
+    desc: "Scripted Similarity vector space model based on TF-IDF term frequency and cosine similarity. It ranks documents using custom similarity scoring directly inside Elasticsearch.",
+    output: "Latency: ~110 ms",
   },
   {
     n: "05",
@@ -134,6 +118,6 @@ export const PIPELINE_STEPS = [
     n: "06",
     title: "Evaluation harness",
     desc: "Each model is scored on the same labeled query set across nine IR metrics. Results are versioned per experiment.",
-    output: "9 metrics · 5 models",
+    output: "9 metrics · 4 models",
   },
 ];

@@ -1,6 +1,7 @@
 import sys
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from elasticsearch import Elasticsearch
@@ -56,6 +57,14 @@ def create_app() -> FastAPI:
         title="Information Retrieval API",
         version="0.2.0",
         description="Multi-algorithm search API: BM25 + TF-IDF (SVM) with config-driven field weights and filtering",
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:8090", "http://127.0.0.1:8090"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # Initialize Elasticsearch client

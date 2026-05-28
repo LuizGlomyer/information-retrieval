@@ -47,7 +47,7 @@ export const Hero = () => {
                 {t.hero.stats.corpus}
               </dt>
               <dd className="mt-1 font-serif text-3xl">
-                12,438 <span className="text-base font-sans text-muted-foreground">{t.hero.stats.games}</span>
+                232,595 <span className="text-base font-sans text-muted-foreground">{t.hero.stats.games}</span>
               </dd>
             </div>
             <div>
@@ -60,7 +60,7 @@ export const Hero = () => {
               <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {t.hero.stats.rankingModels}
               </dt>
-              <dd className="mt-1 font-serif text-3xl">5</dd>
+              <dd className="mt-1 font-serif text-3xl">4</dd>
             </div>
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">

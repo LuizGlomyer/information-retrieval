@@ -1,0 +1,28 @@
+# Exclude git repository history
+.git
+.gitignore
+.dockerignore
+
+# Exclude python virtual environments and dependencies
+.venv
+**/.venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Exclude node dependencies and build output
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+
+# Exclude local environment configs and temporary files
+.env
+.env.*
+.DS_Store
+*.zip
+*.tar.gz
