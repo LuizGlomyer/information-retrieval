@@ -1,6 +1,6 @@
 # Searching Games
 
-React interface for demonstrating and comparing information retrieval models over a game catalog. The project was created in Lovable and uses Vite, Tailwind, shadcn/ui, and mocked data to simulate the future backend integration.
+React interface for demonstrating and comparing information retrieval models over a game catalog. The project uses Vite, Tailwind, shadcn/ui, and data for backend integration.
 
 Leia em portugues: [README.md](./README.md)
 
@@ -9,7 +9,7 @@ Leia em portugues: [README.md](./README.md)
 - Node.js 18 or newer.
 - npm, which is installed with Node.
 
-You do not need Bun to run this project. The `bun.lockb` file came from Lovable, but the repository also has `package-lock.json`, so the Node/npm workflow works normally.
+The repository contains `package-lock.json`, so the Node/npm workflow works normally.
 
 ## Running Locally
 

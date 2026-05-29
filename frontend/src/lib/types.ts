@@ -2,8 +2,7 @@
 
 export type ModelId =
   | "bm25"
-  | "bm25_weighted"
-  | "bm25_weighted_embeddings"
+  | "svm"
   | "bert"
   | "bert_finetuned";
 

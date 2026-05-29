@@ -1,6 +1,6 @@
 # Searching Games
 
-Interface React para demonstrar e comparar modelos de recuperacao de informacao em um catalogo de jogos. O projeto nasceu no Lovable, usa Vite, Tailwind, shadcn/ui e dados mockados para simular a futura integracao com backend.
+Interface React para demonstrar e comparar modelos de recuperacao de informacao em um catalogo de jogos. O projeto usa Vite, Tailwind, shadcn/ui e dados para integracao com backend.
 
 Read this in English: [README.en.md](./README.en.md)
 
@@ -9,7 +9,7 @@ Read this in English: [README.en.md](./README.en.md)
 - Node.js 18 ou superior.
 - npm, que ja vem junto com o Node.
 
-Voce nao precisa instalar Bun para rodar este projeto. O arquivo `bun.lockb` veio do Lovable, mas o repositorio tambem possui `package-lock.json`, entao o fluxo com Node/npm funciona normalmente.
+O repositorio possui `package-lock.json`, entao o fluxo com Node/npm funciona normalmente.
 
 ## Como rodar
 

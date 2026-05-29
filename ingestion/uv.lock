@@ -63,7 +63,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pipeline"
+name = "ingestion"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

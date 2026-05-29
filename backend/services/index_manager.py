@@ -121,9 +121,20 @@ class IndexManager:
         print(f"\nBM25 Index:  {BM25_INDEX_NAME}")
         print(f"SVM Index:   {SVM_INDEX_NAME}")
 
-        # Ingest data
-        csv_file = "../game_dataset_cleaned.csv"  # root folder of repository
+        # Try multiple locations for the CSV file
+        # Order: Docker volume mount first, then local dev paths
+        csv_candidates = [
+            "/app/data/game_dataset_cleaned.csv",    # Docker volume mount
+            "../ingestion/game_dataset_cleaned.csv", # repo/ingestion/ (run from backend/)
+            "../game_dataset_cleaned.csv",           # repo root (run from backend/)
+            "ingestion/game_dataset_cleaned.csv",    # repo/ingestion/ (run from repo root)
+            "game_dataset_cleaned.csv",              # current dir
+        ]
+        csv_file = next(
+            (p for p in csv_candidates if Path(p).exists()), csv_candidates[0]
+        )
         ingest_ok = IndexManager.ingest_data(es_client, csv_file)
+
 
         return ingest_ok
 
