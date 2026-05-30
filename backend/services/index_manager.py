@@ -138,7 +138,6 @@ class IndexManager:
         )
         ingest_ok = IndexManager.ingest_data(es_client, csv_file)
 
-
         return ingest_ok
 
     @staticmethod
@@ -175,16 +174,29 @@ class IndexManager:
             # Initialize embedding service for BM25 semantic embeddings
             embedding_service = EmbeddingService()
 
-            # Check if both indices already have data
+            # Check which indices need ingestion
             bm25_count = es_client.count(index=BM25_INDEX_NAME)["count"]
             svm_count = es_client.count(index=SVM_INDEX_NAME)["count"]
+            ingest_bm25 = bm25_count == 0
+            ingest_svm = svm_count == 0
 
-            if bm25_count > 0 and svm_count > 0:
+            if not ingest_bm25 and not ingest_svm:
                 print("✓ Both indices already contain data")
                 print(f"  - {BM25_INDEX_NAME}: {bm25_count} documents")
                 print(f"  - {SVM_INDEX_NAME}: {svm_count} documents")
                 print("=" * 70)
                 return True
+
+            if not ingest_bm25:
+                print(f"✓ BM25 index already populated ({bm25_count} documents)")
+            if not ingest_svm:
+                print(f"✓ SVM index already populated ({svm_count} documents)")
+            if ingest_bm25 and ingest_svm:
+                print("✓ Both BM25 and SVM need ingestion")
+            elif ingest_bm25:
+                print("✓ Only BM25 needs ingestion")
+            elif ingest_svm:
+                print("✓ Only SVM needs ingestion")
 
             # Read and count CSV rows for progress reporting
             with open(csv_path, encoding="utf-8") as f:
@@ -208,7 +220,7 @@ class IndexManager:
                     desc="Embedding",
                     ncols=80,
                 ):
-                    doc = {
+                    base_doc = {
                         "id": row["id"],
                         "name": row["name"],
                         "summary": row["summary"],
@@ -235,37 +247,48 @@ class IndexManager:
                         ),
                     }
 
-                    # Generate semantic embedding for BM25 index only
-                    try:
-                        semantic_content = format_semantic_content(
-                            name=row["name"],
-                            summary=row["summary"],
-                            genres=IndexManager._parse_list(row["genres"]),
-                            themes=IndexManager._parse_list(row["themes"]),
-                            keywords=IndexManager._parse_list(row["keywords"]),
+                    if ingest_svm:
+                        actions.append(
+                            {
+                                "_index": SVM_INDEX_NAME,
+                                "_id": row["id"],
+                                "_source": base_doc,
+                            }
                         )
-                        semantic_embedding = embedding_service.embed(semantic_content)
-                        doc["semantic_embedding"] = semantic_embedding
-                    except Exception as e:
-                        print(f"\n⚠ Failed to generate embedding for {row['id']}: {e}")
-                        # Continue without embedding rather than failing entire ingestion
-                        pass
 
-                    # Index document to BM25 (with semantic embedding)
-                    actions.append(
-                        {"_index": BM25_INDEX_NAME, "_id": row["id"], "_source": doc}
-                    )
+                    if ingest_bm25:
+                        # Generate semantic embedding for BM25 index only
+                        try:
+                            semantic_content = format_semantic_content(
+                                name=row["name"],
+                                summary=row["summary"],
+                                genres=IndexManager._parse_list(row["genres"]),
+                                themes=IndexManager._parse_list(row["themes"]),
+                                keywords=IndexManager._parse_list(row["keywords"]),
+                            )
+                            semantic_embedding = embedding_service.embed(
+                                semantic_content
+                            )
+                            base_doc["semantic_embedding"] = semantic_embedding
+                        except Exception as e:
+                            print(
+                                f"\n⚠ Failed to generate embedding for {row['id']}: {e}"
+                            )
+                            # Continue without embedding rather than failing entire ingestion
+                            pass
 
-                    # Create SVM-only doc without semantic_embedding
-                    svm_doc = {k: v for k, v in doc.items() if k != "semantic_embedding"}
-                    actions.append(
-                        {"_index": SVM_INDEX_NAME, "_id": row["id"], "_source": svm_doc}
-                    )
+                        actions.append(
+                            {
+                                "_index": BM25_INDEX_NAME,
+                                "_id": row["id"],
+                                "_source": base_doc,
+                            }
+                        )
 
                     doc_count += 1
 
             embedding_elapsed = time.perf_counter() - embedding_start
-            print(f"\n✓ Embedding generation completed in {embedding_elapsed:.2f}s")
+            print(f"\n✓ Data ingestion completed in {embedding_elapsed:.2f}s")
 
             # Bulk index to both indices
             if doc_count > 0:

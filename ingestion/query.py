@@ -4,18 +4,10 @@ from elasticsearch import Elasticsearch
 es = Elasticsearch("http://localhost:9200")
 
 # Query simples por nome
-query = {
-    "match": {
-        "name": "Super Mario"
-    }
-}
+query = {"match": {"name": "Super Mario"}}
 
 # Executa busca
-response = es.search(
-    index="games",
-    query=query,
-    size=10
-)
+response = es.search(index="games", query=query, size=10)
 
 # Exibe resultados
 print("Resultados:\n")

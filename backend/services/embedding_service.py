@@ -98,9 +98,7 @@ class EmbeddingService:
                     self._model.to(self._device)
                     print("✓ Model moved to CUDA device")
                 except Exception as device_error:
-                    print(
-                        f"⚠ CUDA setup failed, falling back to CPU: {device_error}"
-                    )
+                    print(f"⚠ CUDA setup failed, falling back to CPU: {device_error}")
                     self._device = torch.device("cpu")
 
             print(
