@@ -16,7 +16,18 @@ DEFAULT_RESULT_SIZE = 5
 MAX_RESULT_SIZE = 1000
 MIN_RESULT_SIZE = 1
 
-# Supported fields for searching
+# ============================================================================
+# SEMANTIC EMBEDDINGS CONFIGURATION
+# ============================================================================
+
+# Embedding model configuration for semantic search
+EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+EMBEDDING_DIMENSION = 384  # Output dimension of BAAI/bge-small-en-v1.5
+EMBEDDING_FIELD_NAME = "semantic_embedding"
+
+# ============================================================================
+# SUPPORTED FIELDS FOR SEARCHING
+# ============================================================================
 SEARCHABLE_FIELDS = [
     "name",
     "summary",
@@ -132,6 +143,12 @@ BM25_INDEX_CONFIG = {
             "cover_url": {"type": "keyword"},
             "screenshot_urls": {"type": "keyword"},
             "artwork_urls": {"type": "keyword"},
+            "semantic_embedding": {
+                "type": "dense_vector",
+                "dims": EMBEDDING_DIMENSION,
+                "index": True,
+                "similarity": "cosine",
+            },
         }
     },
 }

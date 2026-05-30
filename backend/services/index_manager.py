@@ -5,6 +5,7 @@ Handles creation and data ingestion for both BM25 and SVM (TF-IDF) indices.
 
 import csv
 import ast
+import time
 from pathlib import Path
 from elasticsearch import Elasticsearch, helpers
 from elasticsearch.exceptions import BadRequestError
@@ -14,6 +15,8 @@ from config import (
     SVM_INDEX_NAME,
     SVM_INDEX_CONFIG,
 )
+from .embedding_service import EmbeddingService, format_semantic_content
+from tqdm import tqdm
 
 
 class IndexManager:
@@ -169,6 +172,9 @@ class IndexManager:
             actions = []
             doc_count = 0
 
+            # Initialize embedding service for BM25 semantic embeddings
+            embedding_service = EmbeddingService()
+
             # Check if both indices already have data
             bm25_count = es_client.count(index=BM25_INDEX_NAME)["count"]
             svm_count = es_client.count(index=SVM_INDEX_NAME)["count"]
@@ -180,11 +186,28 @@ class IndexManager:
                 print("=" * 70)
                 return True
 
-            # Read and parse CSV
+            # Read and count CSV rows for progress reporting
+            with open(csv_path, encoding="utf-8") as f:
+                total_rows = sum(1 for _ in f) - 1
+
+            if total_rows <= 0:
+                print("⚠ No documents found in CSV file")
+                print("=" * 70)
+                return False
+
+            print(f"Total documents to index: {total_rows}\n")
+            embedding_start = time.perf_counter()
+
             with open(csv_path, encoding="utf-8") as f:
                 reader = csv.DictReader(f)
 
-                for row in reader:
+                for row in tqdm(
+                    reader,
+                    total=total_rows,
+                    unit="doc",
+                    desc="Embedding",
+                    ncols=80,
+                ):
                     doc = {
                         "id": row["id"],
                         "name": row["name"],
@@ -212,15 +235,37 @@ class IndexManager:
                         ),
                     }
 
-                    # Index same document to both BM25 and SVM indices
+                    # Generate semantic embedding for BM25 index only
+                    try:
+                        semantic_content = format_semantic_content(
+                            name=row["name"],
+                            summary=row["summary"],
+                            genres=IndexManager._parse_list(row["genres"]),
+                            themes=IndexManager._parse_list(row["themes"]),
+                            keywords=IndexManager._parse_list(row["keywords"]),
+                        )
+                        semantic_embedding = embedding_service.embed(semantic_content)
+                        doc["semantic_embedding"] = semantic_embedding
+                    except Exception as e:
+                        print(f"\n⚠ Failed to generate embedding for {row['id']}: {e}")
+                        # Continue without embedding rather than failing entire ingestion
+                        pass
+
+                    # Index document to BM25 (with semantic embedding)
                     actions.append(
                         {"_index": BM25_INDEX_NAME, "_id": row["id"], "_source": doc}
                     )
+
+                    # Create SVM-only doc without semantic_embedding
+                    svm_doc = {k: v for k, v in doc.items() if k != "semantic_embedding"}
                     actions.append(
-                        {"_index": SVM_INDEX_NAME, "_id": row["id"], "_source": doc}
+                        {"_index": SVM_INDEX_NAME, "_id": row["id"], "_source": svm_doc}
                     )
 
                     doc_count += 1
+
+            embedding_elapsed = time.perf_counter() - embedding_start
+            print(f"\n✓ Embedding generation completed in {embedding_elapsed:.2f}s")
 
             # Bulk index to both indices
             if doc_count > 0:
@@ -229,7 +274,7 @@ class IndexManager:
                 es_client.indices.refresh(index=SVM_INDEX_NAME)
 
                 print(f"✓ Successfully indexed {doc_count} documents to both indices")
-                print(f"  - {BM25_INDEX_NAME} (BM25)")
+                print(f"  - {BM25_INDEX_NAME} (BM25 with semantic embeddings)")
                 print(f"  - {SVM_INDEX_NAME} (TF-IDF)")
                 print("=" * 70)
                 return True

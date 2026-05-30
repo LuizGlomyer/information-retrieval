@@ -10,5 +10,8 @@ dependencies = [
     "pydantic>=2.13.0",
     "ranx>=0.3.21",
     "ruff>=0.15.11",
+    "sentence-transformers>=3.0.0",
+    "torch>=2.0.0",
+    "tqdm>=4.0.0",
     "uvicorn>=0.44.0",
 ]
