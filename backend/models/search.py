@@ -164,6 +164,10 @@ class GameResult(BaseModel):
         None, description="Screenshot image URLs"
     )
     artwork_urls: Optional[List[str]] = Field(None, description="Artwork image URLs")
+    semantic_text: Optional[str] = Field(
+        None,
+        description="Stored semantic text used to generate embeddings",
+    )
 
     class Config:
         from_attributes = True

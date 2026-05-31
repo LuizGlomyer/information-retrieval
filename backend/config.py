@@ -142,6 +142,7 @@ BM25_INDEX_CONFIG = {
             "cover_url": {"type": "keyword"},
             "screenshot_urls": {"type": "keyword"},
             "artwork_urls": {"type": "keyword"},
+            "semantic_text": {"type": "text", "index": False},
             "semantic_embedding": {
                 "type": "dense_vector",
                 "dims": EMBEDDING_DIMENSION,

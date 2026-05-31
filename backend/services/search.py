@@ -380,6 +380,7 @@ class SearchService:
             cover_url=source.get("cover_url"),
             screenshot_urls=source.get("screenshot_urls"),
             artwork_urls=source.get("artwork_urls"),
+            semantic_text=source.get("semantic_text"),
         )
 
     @staticmethod
@@ -415,6 +416,7 @@ class SearchService:
             cover_url=game.cover_url,
             screenshot_urls=game.screenshot_urls,
             artwork_urls=game.artwork_urls,
+            semantic_text=game.semantic_text,
             score=es_score,
             rank=rank,
             algorithm=algorithm,

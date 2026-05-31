@@ -86,8 +86,11 @@ class BulkIndexingService:
             return
 
         embeddings = self._embedding_service.embed_batch(self._pending_texts)
-        for doc, embedding in zip(self._pending_docs, embeddings):
+        for doc, text, embedding in zip(
+            self._pending_docs, self._pending_texts, embeddings
+        ):
             doc["semantic_embedding"] = embedding
+            doc["semantic_text"] = text
             self._pending_actions.append(
                 {
                     "_index": self._bm25_index_name,
@@ -96,6 +99,7 @@ class BulkIndexingService:
                 }
             )
 
+        # Clear pending buffers
         self._pending_docs = []
         self._pending_texts = []
 
