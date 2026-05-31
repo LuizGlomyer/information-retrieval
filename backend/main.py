@@ -1,11 +1,11 @@
 import sys
 from datetime import datetime
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import ConnectionError, NotFoundError, BadRequestError
+from elasticsearch.exceptions import ConnectionError
 
 from config import (
     ELASTICSEARCH_HOST,
@@ -13,16 +13,8 @@ from config import (
     BM25_INDEX_NAME,
     SVM_INDEX_NAME,
 )
-from models.search import (
-    SearchRequest,
-    Bm25IdNameSearchRequest,
-    MultiAlgorithmSearchResponse,
-    Bm25IdNameSearchResponse,
-    FiltersResponse,
-)
-from services.search import SearchService
-from services.filters import FiltersService
 from services.index_manager import IndexManager
+from routes import router
 
 
 def validate_elasticsearch_connection() -> Elasticsearch:
@@ -77,203 +69,7 @@ def create_app() -> FastAPI:
 
     # Store client in app state for use in endpoints
     app.state.es_client = es_client
-
-    @app.get("/health", tags=["Health"])
-    async def health_check():
-        """
-        Health check endpoint.
-
-        Returns the status of the API and Elasticsearch connection.
-        """
-        return {
-            "status": "healthy",
-            "elasticsearch": "connected",
-            "indices": {"bm25": BM25_INDEX_NAME, "svm": SVM_INDEX_NAME},
-        }
-
-    @app.post(
-        "/search",
-        response_model=MultiAlgorithmSearchResponse,
-        tags=["Search"],
-        summary="Multi-Algorithm Search (BM25 + SVM)",
-        description="Search with BM25 and SVM ranking algorithms",
-    )
-    async def search(request: SearchRequest):
-        """
-        Execute a multi-algorithm search against the games index.
-
-        Returns results from both **BM25** (Elasticsearch native similarity) and **SVM** (TF-IDF Vector Space Model)
-        ranking algorithms. Both algorithms apply the same filters. Results are sorted by score
-        within each algorithm (highest scores first).
-
-        **Implementation Details:**
-        - **BM25**: Elasticsearch's default probabilistic ranking function on `games` index
-        - **SVM**: TF-IDF (Salton 1971) calculated via Elasticsearch Scripted Similarity on `games_svm` index
-          - Formula: `score = query.boost × √(freq) × idf × (1/√(length))`
-          - Computed directly in Elasticsearch during query execution
-
-        **Request Body:**
-        - `query_text`: (required) Search query string
-        - `size`: (optional) Number of results per algorithm (1-1000, default: 5)
-        - `explain`: (optional) If true, include per-hit score explanations in each algorithm result
-        - `metrics`: (optional) If true, include IR metrics per algorithm (ranx);
-          uses ``qrels.QUERY_QRELS`` when ``query_text.strip()`` matches a key, otherwise all metrics are zero.
-          ``*_at_5`` (including ``f1_at_5``) when ``size >= 5``; ``*_at_10`` (including ``f1_at_10``) when ``size >= 10``
-        - `filters`: (optional) Filter by genres, game_modes, platforms, player_perspectives, themes, date range, rating
-
-        Multi-match fields and boosts are defined in ``config.DEFAULT_SEARCH_FIELD_WEIGHTS`` (not sent by the client).
-
-        **Example Request:**
-        ```json
-        {
-            "query_text": "action adventure",
-            "size": 10,
-            "explain": false,
-            "filters": {
-                "genres": ["Action", "Adventure"],
-                "platforms": ["PC"]
-            }
-        }
-        ```
-
-        **Response:**
-        Contains results from both algorithms:
-        ```json
-        {
-            "bm25": {
-                "results": [
-                    {
-                        "id": "1",
-                        "name": "Game Name",
-                        "score": 9.5,
-                        "rank": 1,
-                        "algorithm": "bm25",
-                        "summary": "...",
-                        ...
-                    }
-                ],
-                "total": 42,
-                "execution_time_ms": 120
-            },
-            "svm": {
-                "results": [...],
-                "total": 42,
-                "execution_time_ms": 45
-            }
-        }
-        ```
-
-        - `bm25`: Results from Elasticsearch BM25 probabilistic ranking (field weights from server config)
-        - `svm`: Results from Elasticsearch TF-IDF Vector Space Model (Scripted Similarity; same query body and weights as BM25)
-        - `results`: Ranked games with score, rank, and algorithm metadata
-        - `total`: Total matching documents across all filters
-        - `execution_time_ms`: Query execution time for each algorithm in milliseconds
-        - `metrics`: When ``metrics`` was true, each algorithm block includes ``precision_at_1``,
-          ``ndcg_at_1``, ``recall_at_1``, ``mean_average_precision``; ``*_at_5`` when ``size >= 5``;
-          ``*_at_10`` and ``f1_at_10`` when ``size >= 10`` (omitted otherwise)
-        """
-        try:
-            response = SearchService.execute_search(
-                es_client=app.state.es_client, request=request
-            )
-            return response
-
-        except (ConnectionError, NotFoundError) as e:
-            raise HTTPException(
-                status_code=503, detail=f"Elasticsearch error: {str(e)}"
-            )
-        except BadRequestError as e:
-            raise HTTPException(
-                status_code=400, detail=f"Invalid search query: {str(e)}"
-            )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=f"Search error: {str(e)}")
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
-
-    @app.post(
-        "/search/bm25-resumed",
-        response_model=Bm25IdNameSearchResponse,
-        response_model_exclude_none=True,
-        tags=["Search"],
-        summary="BM25 resumed search (id, name, optional platforms)",
-        description="BM25-ranked search returning game id and name, and optionally platforms per hit when name_only is false.",
-    )
-    async def search_bm25_id_name(request: Bm25IdNameSearchRequest):
-        """
-        Execute a BM25 search and return ``id`` and ``name`` for each hit by default.
-
-        If ``name_only`` is false, results also include ``platforms``.
-        Uses the same request body fields as ``POST /search`` plus ``name_only``.
-        ``explain`` and ``metrics`` are ignored on this endpoint.
-        """
-        try:
-            return SearchService.execute_bm25_id_name_search(
-                es_client=app.state.es_client, request=request
-            )
-
-        except (ConnectionError, NotFoundError) as e:
-            raise HTTPException(
-                status_code=503, detail=f"Elasticsearch error: {str(e)}"
-            )
-        except BadRequestError as e:
-            raise HTTPException(
-                status_code=400, detail=f"Invalid search query: {str(e)}"
-            )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=f"Search error: {str(e)}")
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
-
-    @app.get(
-        "/filters",
-        response_model=FiltersResponse,
-        tags=["Filters"],
-        summary="Get Available Filter Values",
-        description="Retrieve all available filter values for the frontend",
-    )
-    async def get_filters():
-        """
-        Get all available filter values for genres, game_modes, platforms, player_perspectives, and themes.
-
-        This endpoint returns all unique values from each filter field in the index.
-        These values can be used to populate dropdown menus or filter selections in the frontend.
-
-        **Response:**
-        ```json
-        {
-            "genres": ["Action", "Adventure", "RPG", ...],
-            "game_modes": ["Single player", "Multiplayer", ...],
-            "platforms": ["PC", "PlayStation", "Xbox", ...],
-            "player_perspectives": ["First person", "Third person", ...],
-            "themes": ["Fantasy", "Sci-Fi", "Horror", ...]
-        }
-        ```
-        """
-        try:
-            filters_data = FiltersService.get_all_filters(
-                es_client=app.state.es_client, index_name=app.state.games_index
-            )
-
-            # Convert dict to FiltersResponse model
-            return FiltersResponse(**filters_data)
-
-        except (ConnectionError, NotFoundError) as e:
-            raise HTTPException(
-                status_code=503, detail=f"Elasticsearch error: {str(e)}"
-            )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400, detail=f"Failed to fetch filters: {str(e)}"
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+    app.include_router(router)
 
     @app.exception_handler(ValidationError)
     async def validation_exception_handler(request, exc):

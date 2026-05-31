@@ -23,7 +23,6 @@ MIN_RESULT_SIZE = 1
 # Embedding model configuration for semantic search
 EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 EMBEDDING_DIMENSION = 384  # Output dimension of BAAI/bge-small-en-v1.5
-EMBEDDING_FIELD_NAME = "semantic_embedding"
 
 # ============================================================================
 # SUPPORTED FIELDS FOR SEARCHING
