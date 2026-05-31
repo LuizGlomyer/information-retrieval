@@ -21,8 +21,13 @@ MIN_RESULT_SIZE = 1
 # ============================================================================
 
 # Embedding model configuration for semantic search
-EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
-EMBEDDING_DIMENSION = 384  # Output dimension of BAAI/bge-small-en-v1.5
+BM25_EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+BM25_EMBEDDING_DIMENSION = 384  # Output dimension of BAAI/bge-small-en-v1.5
+
+# BM25_EMBEDDING_MODEL_NAME = "BAAI/bge-base-en-v1.5"
+# BM25_EMBEDDING_DIMENSION = 768  # Output dimension of BAAI/bge-base-en-v1.5
+
+
 
 # ============================================================================
 # SUPPORTED FIELDS FOR SEARCHING
@@ -145,7 +150,7 @@ BM25_INDEX_CONFIG = {
             "semantic_text": {"type": "text", "index": False},
             "semantic_embedding": {
                 "type": "dense_vector",
-                "dims": EMBEDDING_DIMENSION,
+                "dims": BM25_EMBEDDING_DIMENSION,
                 "index": True,
                 "similarity": "cosine",
             },

@@ -4,7 +4,7 @@ Handles multi-algorithm search execution, error handling, and response mapping.
 """
 
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError, NotFoundError, BadRequestError
 from models.search import (
@@ -18,6 +18,7 @@ from models.search import (
     AlgorithmResult,
     RankedResult,
 )
+from services.embedding_service import EmbeddingService
 from services.query_builder import QueryBuilder
 from services.retrieval_metrics import compute_retrieval_metrics
 from config import BM25_INDEX_NAME, SVM_INDEX_NAME
@@ -30,6 +31,14 @@ class SearchService:
     Encapsulates all ES interactions and response handling.
     Provides both BM25 and SVM-based ranking algorithms.
     """
+
+    _embedding_service: Optional[EmbeddingService] = None
+
+    @staticmethod
+    def _get_embedding_service() -> EmbeddingService:
+        if SearchService._embedding_service is None:
+            SearchService._embedding_service = EmbeddingService()
+        return SearchService._embedding_service
 
     @staticmethod
     def execute_search(
@@ -63,7 +72,7 @@ class SearchService:
         es_client: Elasticsearch, request: Bm25IdNameSearchRequest
     ) -> Bm25IdNameSearchResponse:
         """
-        Execute BM25 search and return id, name, and platforms per hit.
+        Execute BM25 or BM25 hybrid search and return id, name, and platforms per hit.
 
         Args:
             es_client: Elasticsearch client instance
@@ -72,7 +81,11 @@ class SearchService:
         Returns:
             Bm25IdNameSearchResponse with slim result rows
         """
-        bm25_result = SearchService._execute_bm25(es_client=es_client, request=request)
+        bm25_result = (
+            SearchService._execute_bm25_hybrid(es_client=es_client, request=request)
+            if request.hybrid
+            else SearchService._execute_bm25(es_client=es_client, request=request)
+        )
         return Bm25IdNameSearchResponse(
             results=[
                 GameIdName(
@@ -124,6 +137,11 @@ class SearchService:
                 es_client=es_client, request=request
             )
 
+            # Execute BM25 hybrid algorithm: BM25 base ranking + semantic_embedding matching
+            bm25_hybrid_result = SearchService._execute_bm25_hybrid(
+                es_client=es_client, request=request
+            )
+
             # Execute SVM algorithm (from SVM index with TF-IDF scripted similarity)
             svm_result = SearchService._execute_svm(
                 es_client=es_client, request=request
@@ -139,6 +157,13 @@ class SearchService:
                         ),
                     }
                 )
+                bm25_hybrid_result = bm25_hybrid_result.model_copy(
+                    update={
+                        "metrics": compute_retrieval_metrics(
+                            qid, bm25_hybrid_result.results, grades, request.size
+                        ),
+                    }
+                )
                 svm_result = svm_result.model_copy(
                     update={
                         "metrics": compute_retrieval_metrics(
@@ -147,7 +172,11 @@ class SearchService:
                     }
                 )
 
-            return MultiAlgorithmSearchResponse(bm25=bm25_result, svm=svm_result)
+            return MultiAlgorithmSearchResponse(
+                bm25=bm25_result,
+                bm25_hybrid=bm25_hybrid_result,
+                svm=svm_result,
+            )
 
         except ConnectionError as e:
             raise ConnectionError(f"Failed to connect to Elasticsearch: {str(e)}")
@@ -213,6 +242,53 @@ class SearchService:
 
         except Exception as e:
             raise ValueError(f"BM25 search failed: {str(e)}")
+
+    @staticmethod
+    def _execute_bm25_hybrid(
+        es_client: Elasticsearch, request: SearchRequest
+    ) -> AlgorithmResult:
+        """
+        Execute BM25 hybrid search.
+
+        Uses the same BM25 base scoring as _execute_bm25, but augments the query
+        with a dense vector similarity score from the stored semantic_embedding.
+        This preserves the existing BM25 score behavior while adding a semantic
+        signal to the hybrid ranking.
+        """
+        start_time = time.time()
+
+        try:
+            query_vector = SearchService._get_embedding_service().embed(
+                request.query_text
+            )
+            query_body = QueryBuilder.build_bm25_hybrid_search_body(
+                request, query_vector
+            )
+            response = es_client.search(index=BM25_INDEX_NAME, body=query_body)
+            explanations = (
+                SearchService._extract_hit_explanations(response)
+                if request.explain
+                else None
+            )
+
+            total_count, results_data = SearchService._parse_es_response(response)
+            ranked_results = [
+                SearchService._game_result_to_ranked_result(
+                    doc, score, rank + 1, "bm25_hybrid"
+                )
+                for rank, (doc, score) in enumerate(results_data)
+            ]
+
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            return AlgorithmResult(
+                results=ranked_results,
+                total=total_count,
+                execution_time_ms=execution_time_ms,
+                explanations=explanations,
+            )
+
+        except Exception as e:
+            raise ValueError(f"BM25 hybrid search failed: {str(e)}")
 
     @staticmethod
     def _execute_svm(

@@ -113,11 +113,15 @@ class SearchRequest(BaseModel):
 
 
 class Bm25IdNameSearchRequest(SearchRequest):
-    """BM25 resumed search request with optional name-only mode."""
+    """BM25 resumed search request with optional name-only or hybrid mode."""
 
     name_only: bool = Field(
         default=False,
         description="If true, return only the game id and name in each result.",
+    )
+    hybrid: bool = Field(
+        default=False,
+        description="If true, perform BM25 hybrid ranking instead of plain BM25.",
     )
 
 
@@ -361,6 +365,10 @@ class MultiAlgorithmSearchResponse(BaseModel):
     """
 
     bm25: AlgorithmResult = Field(..., description="Results from BM25 algorithm")
+    bm25_hybrid: AlgorithmResult = Field(
+        ...,
+        description="BM25 results augmented with semantic_embedding matching as a hybrid ranking signal",
+    )
     svm: AlgorithmResult = Field(
         ..., description="Results from SVM (TF-IDF + cosine similarity) algorithm"
     )

@@ -14,6 +14,7 @@ from services.filters import FiltersService
 
 router = APIRouter()
 
+
 @router.get("/health", tags=["Health"])
 async def health_check():
     """
@@ -26,6 +27,7 @@ async def health_check():
         "elasticsearch": "connected",
         "indices": {"bm25": BM25_INDEX_NAME, "svm": SVM_INDEX_NAME},
     }
+
 
 @router.post(
     "/search",
@@ -57,20 +59,24 @@ async def search(request: SearchRequest, app_request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+
 @router.post(
     "/search/bm25-resumed",
     response_model=Bm25IdNameSearchResponse,
     response_model_exclude_none=True,
     tags=["Search"],
-    summary="BM25 resumed search (id, name, optional platforms)",
-    description="BM25-ranked search returning game id and name, and optionally platforms per hit when name_only is false.",
+    summary="BM25 resumed search (id, name, optional platforms, optional hybrid)",
+    description=(
+        "BM25-ranked search returning game id and name, and optionally platforms per hit when name_only is false. "
+        "If hybrid is true, BM25 hybrid ranking is used instead of plain BM25."
+    ),
 )
 async def search_bm25_id_name(request: Bm25IdNameSearchRequest, app_request: Request):
     """
-    Execute a BM25 search and return ``id`` and ``name`` for each hit by default.
+    Execute a BM25 or BM25 hybrid search and return ``id`` and ``name`` for each hit by default.
 
     If ``name_only`` is false, results also include ``platforms``.
-    Uses the same request body fields as ``POST /search`` plus ``name_only``.
+    Uses the same request body fields as ``POST /search`` plus ``name_only`` and ``hybrid``.
     ``explain`` and ``metrics`` are ignored on this endpoint.
     """
     try:
@@ -86,6 +92,7 @@ async def search_bm25_id_name(request: Bm25IdNameSearchRequest, app_request: Req
         raise HTTPException(status_code=400, detail=f"Search error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 
 @router.get(
     "/filters",
@@ -112,6 +119,8 @@ async def get_filters(app_request: Request):
     except (ConnectionError, NotFoundError) as e:
         raise HTTPException(status_code=503, detail=f"Elasticsearch error: {str(e)}")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch filters: {str(e)}")
+        raise HTTPException(
+            status_code=400, detail=f"Failed to fetch filters: {str(e)}"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

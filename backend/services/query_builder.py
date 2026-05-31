@@ -154,12 +154,39 @@ class QueryBuilder:
 
         functions = [
             {
+                "filter": {"exists": {"field": "rating"}},
+                "field_value_factor": {
+                    "field": "rating",
+                    "factor": 0.15,
+                    "modifier": "sqrt",
+                    "missing": 0,
+                },
+            },
+            {
                 "filter": {"exists": {"field": "aggregated_rating"}},
                 "field_value_factor": {
                     "field": "aggregated_rating",
-                    "factor": 0.05,
+                    "factor": 0.2,
                     "modifier": "sqrt",
                     "missing": 0,
+                },
+            },
+            {
+                "filter": {"bool": {"must_not": [{"exists": {"field": "rating"}}]}},
+                "script_score": {
+                    "script": {
+                        "source": "params.factor",
+                        "params": {"factor": 0.8},
+                    }
+                },
+            },
+            {
+                "filter": {"bool": {"must_not": [{"exists": {"field": "aggregated_rating"}}]}},
+                "script_score": {
+                    "script": {
+                        "source": "params.factor",
+                        "params": {"factor": 0.5},
+                    }
                 },
             },
             {
@@ -180,5 +207,36 @@ class QueryBuilder:
             "size": request.size,
             "explain": request.explain,
         }
+
+        return body
+
+    @staticmethod
+    def build_bm25_hybrid_search_body(
+        request: SearchRequest, query_vector: List[float]
+    ) -> Dict[str, Any]:
+        """
+        Build a BM25 hybrid search body that adds semantic_embedding matching.
+
+        This uses the same BM25 search configuration as build_search_body,
+        but appends an additional dense vector scoring function for semantic relevance.
+        The hybrid ranking combines the original BM25 score, metadata boosts,
+        and semantic embedding similarity additively.
+        """
+        body = QueryBuilder.build_search_body(request)
+        function_score = body["query"]["function_score"]
+
+        # function_score["score_mode"] = "sum"
+        # function_score["boost_mode"] = "sum"
+        function_score["functions"].append(
+            {
+                "script_score": {
+                    "script": {
+                        "source": "cosineSimilarity(params.query_vector, 'semantic_embedding') + 1.0",
+                        "params": {"query_vector": query_vector},
+                    }
+                },
+                "weight": 2.0,
+            }
+        )
 
         return body

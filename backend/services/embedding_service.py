@@ -8,7 +8,7 @@ from typing import List, Optional
 
 import torch
 from sentence_transformers import SentenceTransformer
-from config import EMBEDDING_MODEL_NAME, EMBEDDING_DIMENSION
+from config import BM25_EMBEDDING_MODEL_NAME, BM25_EMBEDDING_DIMENSION
 
 
 def format_semantic_content(
@@ -90,8 +90,8 @@ class EmbeddingService:
     def _load_model(self) -> None:
         """Load the sentence transformer model (lazy loading)."""
         if self._model is None:
-            print(f"\n🔄 Loading embedding model: {EMBEDDING_MODEL_NAME}...")
-            self._model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+            print(f"\n🔄 Loading embedding model: {BM25_EMBEDDING_MODEL_NAME}...")
+            self._model = SentenceTransformer(BM25_EMBEDDING_MODEL_NAME)
 
             if self._device.type == "cuda":
                 try:
@@ -102,7 +102,7 @@ class EmbeddingService:
                     self._device = torch.device("cpu")
 
             print(
-                f"✓ Model loaded successfully (dimension: {EMBEDDING_DIMENSION}, device: {self._device.type})"
+                f"✓ Model loaded successfully (dimension: {BM25_EMBEDDING_DIMENSION}, device: {self._device.type})"
             )
 
     def embed(self, text: str) -> List[float]:
