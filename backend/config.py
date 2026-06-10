@@ -53,9 +53,8 @@ DEFAULT_SEARCH_FIELD_WEIGHTS: List[Tuple[str, float]] = [
     ("themes", 1.0),
     ("genres", 1.0),
     ("category", 0.5),
-    ("platforms", 0.5),
-    ("player_perspectives", 0.5),
-    ("game_modes", 0.5),
+    # ("player_perspectives", 0.5),
+    ("game_modes", 0.15),
 ]
 
 # ============================================================================

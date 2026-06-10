@@ -142,6 +142,11 @@ class SearchService:
                 es_client=es_client, request=request
             )
 
+            # Execute BERT-style semantic embedding search against BM25 index
+            bert_result = SearchService._execute_bert(
+                es_client=es_client, request=request
+            )
+
             # Execute SVM algorithm (from SVM index with TF-IDF scripted similarity)
             svm_result = SearchService._execute_svm(
                 es_client=es_client, request=request
@@ -164,6 +169,13 @@ class SearchService:
                         ),
                     }
                 )
+                bert_result = bert_result.model_copy(
+                    update={
+                        "metrics": compute_retrieval_metrics(
+                            qid, bert_result.results, grades, request.size
+                        ),
+                    }
+                )
                 svm_result = svm_result.model_copy(
                     update={
                         "metrics": compute_retrieval_metrics(
@@ -175,6 +187,7 @@ class SearchService:
             return MultiAlgorithmSearchResponse(
                 bm25=bm25_result,
                 bm25_hybrid=bm25_hybrid_result,
+                bert=bert_result,
                 svm=svm_result,
             )
 
@@ -289,6 +302,48 @@ class SearchService:
 
         except Exception as e:
             raise ValueError(f"BM25 hybrid search failed: {str(e)}")
+
+    @staticmethod
+    def _execute_bert(
+        es_client: Elasticsearch, request: SearchRequest
+    ) -> AlgorithmResult:
+        """
+        Execute a BERT-style semantic embedding search using BM25 index.
+
+        Searches only the `semantic_embedding` field on the BM25 index, using the
+        query embedding and cosine similarity. Filters are applied from the
+        request but no lexical text matching is performed.
+        """
+        start_time = time.time()
+
+        try:
+            query_vector = SearchService._get_embedding_service().embed(
+                request.query_text
+            )
+            query_body = QueryBuilder.build_bert_search_body(request, query_vector)
+            response = es_client.search(index=BM25_INDEX_NAME, body=query_body)
+            explanations = (
+                SearchService._extract_hit_explanations(response)
+                if request.explain
+                else None
+            )
+
+            total_count, results_data = SearchService._parse_es_response(response)
+            ranked_results = [
+                SearchService._game_result_to_ranked_result(doc, score, rank + 1, "bert")
+                for rank, (doc, score) in enumerate(results_data)
+            ]
+
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            return AlgorithmResult(
+                results=ranked_results,
+                total=total_count,
+                execution_time_ms=execution_time_ms,
+                explanations=explanations,
+            )
+
+        except Exception as e:
+            raise ValueError(f"BERT search failed: {str(e)}")
 
     @staticmethod
     def _execute_svm(

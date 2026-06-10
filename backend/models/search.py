@@ -369,6 +369,9 @@ class MultiAlgorithmSearchResponse(BaseModel):
         ...,
         description="BM25 results augmented with semantic_embedding matching as a hybrid ranking signal",
     )
+    bert: AlgorithmResult = Field(
+        ..., description="Semantic embedding-only results from BM25 semantic_embedding field"
+    )
     svm: AlgorithmResult = Field(
         ..., description="Results from SVM (TF-IDF + cosine similarity) algorithm"
     )
