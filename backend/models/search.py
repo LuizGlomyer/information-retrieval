@@ -287,13 +287,6 @@ class RetrievalMetrics(BaseModel):
     ndcg_at_10: Optional[float] = Field(
         None, ge=0.0, le=1.0, description="Included when request size >= 10"
     )
-    recall_at_1: float = Field(..., ge=0.0, le=1.0)
-    recall_at_5: Optional[float] = Field(
-        None, ge=0.0, le=1.0, description="Included when request size >= 5"
-    )
-    recall_at_10: Optional[float] = Field(
-        None, ge=0.0, le=1.0, description="Included when request size >= 10"
-    )
 
     @model_serializer(mode="wrap")
     def _serialize(self, serializer, info):

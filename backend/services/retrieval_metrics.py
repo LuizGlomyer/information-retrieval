@@ -25,19 +25,16 @@ def _metrics_from_ranx(raw: dict[str, float], size: int) -> RetrievalMetrics:
     data: dict[str, float] = {
         "precision_at_1": pick("precision@1"),
         "ndcg_at_1": pick("ndcg@1"),
-        "recall_at_1": pick("recall@1"),
         "f1_at_1": pick("f1@1"),
         "mean_average_precision": pick("map"),
     }
     if size >= 5:
         data["precision_at_5"] = pick("precision@5")
         data["ndcg_at_5"] = pick("ndcg@5")
-        data["recall_at_5"] = pick("recall@5")
         data["f1_at_5"] = pick("f1@5")
     if size >= 10:
         data["precision_at_10"] = pick("precision@10")
         data["ndcg_at_10"] = pick("ndcg@10")
-        data["recall_at_10"] = pick("recall@10")
         data["f1_at_10"] = pick("f1@10")
     return RetrievalMetrics(**data)
 
@@ -46,7 +43,6 @@ def _zero_metrics(size: int) -> RetrievalMetrics:
     data: dict[str, float] = {
         "precision_at_1": 0.0,
         "ndcg_at_1": 0.0,
-        "recall_at_1": 0.0,
         "f1_at_1": 0.0,
         "mean_average_precision": 0.0,
     }
@@ -55,7 +51,6 @@ def _zero_metrics(size: int) -> RetrievalMetrics:
             {
                 "precision_at_5": 0.0,
                 "ndcg_at_5": 0.0,
-                "recall_at_5": 0.0,
                 "f1_at_5": 0.0,
             }
         )
@@ -64,7 +59,6 @@ def _zero_metrics(size: int) -> RetrievalMetrics:
             {
                 "precision_at_10": 0.0,
                 "ndcg_at_10": 0.0,
-                "recall_at_10": 0.0,
                 "f1_at_10": 0.0,
             }
         )
