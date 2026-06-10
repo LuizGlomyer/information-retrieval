@@ -120,10 +120,75 @@ class QueryBuilder:
         Returns:
             Complete Elasticsearch query body ready for execution
         """
+        bool_query = QueryBuilder._build_bm25_bool_query(request)
+        functions = QueryBuilder._build_rating_and_keyword_functions()
+
+        body: Dict[str, Any] = QueryBuilder._build_function_score_body(
+            query=bool_query,
+            functions=functions,
+            boost_mode="multiply",
+        )
+
+        body["size"] = request.size
+        body["explain"] = request.explain
+
+        return body
+
+    @staticmethod
+    def build_bm25_hybrid_search_body(
+        request: SearchRequest, query_vector: List[float]
+    ) -> Dict[str, Any]:
+        """
+        Build a BM25 hybrid search body that adds semantic_embedding matching.
+
+        This uses the same BM25 search configuration as build_search_body,
+        but appends an additional dense vector scoring function for semantic relevance.
+        The hybrid ranking combines the original BM25 score, metadata boosts,
+        and semantic embedding similarity additively.
+        """
+        body = QueryBuilder.build_search_body(request)
+        function_score = body["query"]["function_score"]
+
+        # function_score["score_mode"] = "sum"
+        # function_score["boost_mode"] = "sum"
+
+        function_score["functions"].append(
+            QueryBuilder._build_semantic_vector_function(query_vector, weight=2.0)
+        )
+
+        return body
+
+    @staticmethod
+    def build_bert_search_body(
+        request: SearchRequest, query_vector: List[float]
+    ) -> Dict[str, Any]:
+        """
+        Build a BM25 index search body that matches only on the semantic_embedding.
+
+        Filters from the request are applied if provided, but the same rating and
+        keyword score adjustments are reapplied to control score behavior.
+        """
+        bool_query = QueryBuilder._build_bert_bool_query(request)
+        functions = [QueryBuilder._build_semantic_vector_function(query_vector)]
+        functions.extend(QueryBuilder._build_rating_and_keyword_functions())
+
+        body: Dict[str, Any] = QueryBuilder._build_function_score_body(
+            query=bool_query,
+            functions=functions,
+            score_mode="multiply",
+            boost_mode="replace",
+        )
+
+        body["size"] = request.size
+        body["explain"] = request.explain
+
+        return body
+
+    @staticmethod
+    def _build_bm25_bool_query(request: SearchRequest) -> Dict[str, Any]:
         formatted_fields = QueryBuilder.build_multi_match_fields()
         filter_clauses = QueryBuilder.build_filters(request.filters)
 
-        # Build the core bool query
         bool_query: Dict[str, Any] = {
             "must": [
                 {
@@ -135,7 +200,6 @@ class QueryBuilder:
                 }
             ],
             "should": [
-                # Low boost when analyzed keywords match unofficial/fangame tokens
                 {
                     "match": {
                         "keywords": {
@@ -144,15 +208,28 @@ class QueryBuilder:
                             "boost": 0.1,
                         }
                     }
-                },
+                }
             ],
         }
 
-        # Add filters if any exist
         if filter_clauses:
             bool_query["filter"] = filter_clauses
 
-        functions = [
+        return bool_query
+
+    @staticmethod
+    def _build_bert_bool_query(request: SearchRequest) -> Dict[str, Any]:
+        bool_query: Dict[str, Any] = {"must": [{"match_all": {}}]}
+        filter_clauses = QueryBuilder.build_filters(request.filters)
+
+        if filter_clauses:
+            bool_query["filter"] = filter_clauses
+
+        return bool_query
+
+    @staticmethod
+    def _build_rating_and_keyword_functions() -> List[Dict[str, Any]]:
+        return [
             {
                 "filter": {"exists": {"field": "rating"}},
                 "field_value_factor": {
@@ -195,48 +272,38 @@ class QueryBuilder:
             },
         ]
 
-        # Build final body with smooth aggregated_rating scoring
-        body: Dict[str, Any] = {
-            "query": {
-                "function_score": {
-                    "query": {"bool": bool_query},
-                    "functions": functions,
-                    "boost_mode": "multiply",
+    @staticmethod
+    def _build_semantic_vector_function(
+        query_vector: List[float], weight: Optional[float] = None
+    ) -> Dict[str, Any]:
+        function: Dict[str, Any] = {
+            "script_score": {
+                "script": {
+                    "source": "cosineSimilarity(params.query_vector, 'semantic_embedding') + 1.0",
+                    "params": {"query_vector": query_vector},
                 }
-            },
-            "size": request.size,
-            "explain": request.explain,
+            }
         }
 
-        return body
+        if weight is not None:
+            function["weight"] = weight
+
+        return function
 
     @staticmethod
-    def build_bm25_hybrid_search_body(
-        request: SearchRequest, query_vector: List[float]
+    def _build_function_score_body(
+        query: Dict[str, Any],
+        functions: List[Dict[str, Any]],
+        boost_mode: str = "multiply",
+        score_mode: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Build a BM25 hybrid search body that adds semantic_embedding matching.
+        function_score: Dict[str, Any] = {
+            "query": {"bool": query} if query.get("must") or query.get("filter") else {"match_all": {}},
+            "functions": functions,
+            "boost_mode": boost_mode,
+        }
 
-        This uses the same BM25 search configuration as build_search_body,
-        but appends an additional dense vector scoring function for semantic relevance.
-        The hybrid ranking combines the original BM25 score, metadata boosts,
-        and semantic embedding similarity additively.
-        """
-        body = QueryBuilder.build_search_body(request)
-        function_score = body["query"]["function_score"]
+        if score_mode:
+            function_score["score_mode"] = score_mode
 
-        # function_score["score_mode"] = "sum"
-        # function_score["boost_mode"] = "sum"
-        function_score["functions"].append(
-            {
-                "script_score": {
-                    "script": {
-                        "source": "cosineSimilarity(params.query_vector, 'semantic_embedding') + 1.0",
-                        "params": {"query_vector": query_vector},
-                    }
-                },
-                "weight": 2.0,
-            }
-        )
-
-        return body
+        return {"query": {"function_score": function_score}}
