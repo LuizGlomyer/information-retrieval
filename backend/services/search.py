@@ -19,6 +19,7 @@ from models.search import (
     RankedResult,
 )
 from services.embedding_service import EmbeddingService
+from services.reranker_service import RerankerService
 from services.query_builder import QueryBuilder
 from services.retrieval_metrics import compute_retrieval_metrics
 from config import config
@@ -33,12 +34,19 @@ class SearchService:
     """
 
     _embedding_service: Optional[EmbeddingService] = None
+    _reranker_service: Optional[RerankerService] = None
 
     @staticmethod
     def _get_embedding_service() -> EmbeddingService:
         if SearchService._embedding_service is None:
             SearchService._embedding_service = EmbeddingService()
         return SearchService._embedding_service
+
+    @staticmethod
+    def _get_reranker_service() -> RerankerService:
+        if SearchService._reranker_service is None:
+            SearchService._reranker_service = RerankerService()
+        return SearchService._reranker_service
 
     @staticmethod
     def execute_search(
@@ -152,6 +160,17 @@ class SearchService:
                 es_client=es_client, request=request
             )
 
+            # Rerank BM25 hybrid candidates using a cross-encoder reranker
+            try:
+                bm25_hybrid_crossencoder_result = (
+                    SearchService._execute_bm25_hybrid_crossencoder(
+                        bm25_hybrid_result, request.query_text
+                    )
+                )
+            except Exception:
+                # Non-fatal: if reranker fails return empty AlgorithmResult with same totals
+                bm25_hybrid_crossencoder_result = bm25_hybrid_result
+
             if request.metrics:
                 qid = normalized_query_key(request.query_text)
                 grades = graded_qrels_for_query(request.query_text)
@@ -189,6 +208,7 @@ class SearchService:
                 bm25_hybrid=bm25_hybrid_result,
                 bert=bert_result,
                 svm=svm_result,
+                bm25_hybrid_crossencoder=bm25_hybrid_crossencoder_result,
             )
 
         except ConnectionError as e:
@@ -302,6 +322,51 @@ class SearchService:
 
         except Exception as e:
             raise ValueError(f"BM25 hybrid search failed: {str(e)}")
+
+    @staticmethod
+    def _execute_bm25_hybrid_crossencoder(
+        bm25_hybrid_result: AlgorithmResult, query_text: str
+    ) -> AlgorithmResult:
+        """
+        Rerank BM25 hybrid results using a cross-encoder reranker.
+
+        Takes the existing BM25 hybrid ranked results and rescores them with
+        a cross-encoder model (query, document) pairs. Returns a new
+        AlgorithmResult with the reranked list and updated ranks.
+        """
+        start_time = time.time()
+
+        # Build pairs for reranker: [query, doc_text]
+        pairs = []
+        original_results = bm25_hybrid_result.results
+        for rr in original_results:
+            doc_text = rr.semantic_text or f"{rr.name}\n{rr.summary or ''}"
+            pairs.append([query_text, doc_text])
+
+        # Score with reranker
+        scores = SearchService._get_reranker_service().score_pairs(pairs)
+
+        # Attach scores and sort descending
+        scored = list(zip(original_results, scores))
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        reranked_results = []
+        for new_rank, (orig_rr, score) in enumerate(scored, start=1):
+            # orig_rr is a RankedResult; create an updated copy with new score/rank/algorithm
+            updated = orig_rr.model_copy(update={
+                "score": float(score),
+                "rank": new_rank,
+                "algorithm": "bm25_hybrid_crossencoder",
+            })
+            reranked_results.append(updated)
+
+        execution_time_ms = int((time.time() - start_time) * 1000)
+
+        return AlgorithmResult(
+            results=reranked_results,
+            total=bm25_hybrid_result.total,
+            execution_time_ms=execution_time_ms,
+        )
 
     @staticmethod
     def _execute_bert(

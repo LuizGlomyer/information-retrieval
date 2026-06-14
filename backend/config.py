@@ -39,6 +39,9 @@ class Config:
         self.BM25_EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
         self.BM25_EMBEDDING_DIMENSION = 384
 
+        # Reranker model (cross-encoder) used to rescore BM25 hybrid candidates
+        self.BM25_RERANKER_MODEL_NAME = "BAAI/bge-reranker-base"
+
         # BM25_EMBEDDING_MODEL_NAME = "BAAI/bge-base-en-v1.5"
         # BM25_EMBEDDING_DIMENSION = 768
 

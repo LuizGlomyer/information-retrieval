@@ -1,5 +1,5 @@
 info:
-  name: Basic Search
+  name: Search
   type: http
   seq: 2
 
@@ -10,12 +10,12 @@ http:
     type: json
     data: |-
       {
-      //   "query_text": "basketball with good movement",
+        "query_text": "basketball with good movement",
       //   "query_text": "kill monsters",
       //   "query_text": "combat that is mortal",
       //   "query_text": "games that take place in greece",
       // "query_text": "spartan warrior protagonist",
-         "query_text": "super marios",
+      //    "query_text": "super marios",
       //   "explain": true,
         "metrics": true,
         "size": 10,

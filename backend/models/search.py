@@ -393,3 +393,6 @@ class MultiAlgorithmSearchResponse(BaseModel):
     svm: AlgorithmResult = Field(
         ..., description="Results from SVM (TF-IDF + cosine similarity) algorithm"
     )
+    bm25_hybrid_crossencoder: AlgorithmResult = Field(
+        ..., description="BM25 hybrid candidates rescored with a cross-encoder reranker"
+    )
