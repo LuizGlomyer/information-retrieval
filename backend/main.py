@@ -7,12 +7,7 @@ from pydantic import ValidationError
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError
 
-from config import (
-    ELASTICSEARCH_HOST,
-    ELASTICSEARCH_PORT,
-    BM25_INDEX_NAME,
-    SVM_INDEX_NAME,
-)
+from config import config
 from services.index_manager import IndexManager
 from routes import router
 
@@ -22,16 +17,16 @@ def validate_elasticsearch_connection() -> Elasticsearch:
     Validate connection to Elasticsearch.
     Exits the application if connection fails.
     """
-    es_client = Elasticsearch([f"http://{ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}"])
+    es_client = Elasticsearch([f"http://{config.ELASTICSEARCH_HOST}:{config.ELASTICSEARCH_PORT}"])
 
     try:
         if not es_client.ping():
             print(
-                f"❌ Failed to connect to Elasticsearch at {ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}"
+                f"❌ Failed to connect to Elasticsearch at {config.ELASTICSEARCH_HOST}:{config.ELASTICSEARCH_PORT}"
             )
             sys.exit(1)
         print(
-            f"✓ Connected to Elasticsearch at {ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}"
+            f"✓ Connected to Elasticsearch at {config.ELASTICSEARCH_HOST}:{config.ELASTICSEARCH_PORT}"
         )
     except ConnectionError as e:
         print(f"❌ Connection error: {e}")
@@ -109,7 +104,7 @@ app = create_app()
 
 if __name__ == "__main__":
     print("✓ Application initialized successfully")
-    print(f"📚 BM25 Index: {BM25_INDEX_NAME}")
-    print(f"📚 SVM Index: {SVM_INDEX_NAME}")
-    print(f"🌐 Elasticsearch: {ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}")
+    print(f"📚 BM25 Index: {config.BM25_INDEX_NAME}")
+    print(f"📚 SVM Index: {config.SVM_INDEX_NAME}")
+    print(f"🌐 Elasticsearch: {config.ELASTICSEARCH_HOST}:{config.ELASTICSEARCH_PORT}")
     print("🚀 To start the server, run: uvicorn main:app --reload --port 8080")

@@ -1,21 +1,18 @@
 info:
-  name: Resumed Search BM25
+  name: Generate qrels
   type: http
-  seq: 5
+  seq: 6
 
 http:
   method: POST
-  url: http://localhost:8080/search/bm25-resumed
+  url: http://localhost:8080/search/generate-qrels
   body:
     type: json
     data: |-
       {
         "query_text": "super mario", 
-      //     "query_text": "games that take place in greece",
-        "hybrid": true,
-        "name_only": true,
         "size": 10,
-        "filters": {
+          "filters": {
           "genres": [
       //             "platform"
       //       "Role-playing (RPG)"

@@ -21,7 +21,7 @@ from models.search import (
 from services.embedding_service import EmbeddingService
 from services.query_builder import QueryBuilder
 from services.retrieval_metrics import compute_retrieval_metrics
-from config import BM25_INDEX_NAME, SVM_INDEX_NAME
+from config import config
 from qrels import graded_qrels_for_query, normalized_query_key
 
 
@@ -195,7 +195,7 @@ class SearchService:
             raise ConnectionError(f"Failed to connect to Elasticsearch: {str(e)}")
         except NotFoundError:
             raise NotFoundError(
-                f"Indices not found. Ensure both '{BM25_INDEX_NAME}' and '{SVM_INDEX_NAME}' exist."
+                f"Indices not found. Ensure both '{config.BM25_INDEX_NAME}' and '{config.SVM_INDEX_NAME}' exist."
             )
         except BadRequestError as e:
             raise BadRequestError(f"Invalid search query: {str(e)}")
@@ -226,7 +226,7 @@ class SearchService:
             query_body = QueryBuilder.build_search_body(request)
 
             # Execute search against BM25 index
-            response = es_client.search(index=BM25_INDEX_NAME, body=query_body)
+            response = es_client.search(index=config.BM25_INDEX_NAME, body=query_body)
             explanations = (
                 SearchService._extract_hit_explanations(response)
                 if request.explain
@@ -277,7 +277,7 @@ class SearchService:
             query_body = QueryBuilder.build_bm25_hybrid_search_body(
                 request, query_vector
             )
-            response = es_client.search(index=BM25_INDEX_NAME, body=query_body)
+            response = es_client.search(index=config.BM25_INDEX_NAME, body=query_body)
             explanations = (
                 SearchService._extract_hit_explanations(response)
                 if request.explain
@@ -321,7 +321,7 @@ class SearchService:
                 request.query_text
             )
             query_body = QueryBuilder.build_bert_search_body(request, query_vector)
-            response = es_client.search(index=BM25_INDEX_NAME, body=query_body)
+            response = es_client.search(index=config.BM25_INDEX_NAME, body=query_body)
             explanations = (
                 SearchService._extract_hit_explanations(response)
                 if request.explain
@@ -375,7 +375,7 @@ class SearchService:
             query_body = QueryBuilder.build_search_body(request)
 
             # Execute search against SVM index (with scripted TF-IDF similarity)
-            response = es_client.search(index=SVM_INDEX_NAME, body=query_body)
+            response = es_client.search(index=config.SVM_INDEX_NAME, body=query_body)
             explanations = (
                 SearchService._extract_hit_explanations(response)
                 if request.explain

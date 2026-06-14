@@ -5,7 +5,7 @@ Converts SearchRequest models to Elasticsearch query DSL.
 
 from typing import Dict, Any, List, Optional
 
-from config import DEFAULT_SEARCH_FIELD_WEIGHTS
+from config import config
 from models.search import SearchRequest, FilterCriteria
 
 
@@ -24,7 +24,7 @@ class QueryBuilder:
             [("name", 2), ("summary", 1)] -> ["name^2", "summary"]
         """
         formatted_fields: List[str] = []
-        for field, weight in DEFAULT_SEARCH_FIELD_WEIGHTS:
+        for field, weight in config.DEFAULT_SEARCH_FIELD_WEIGHTS:
             if weight == 1:
                 formatted_fields.append(field)
             else:

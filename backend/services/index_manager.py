@@ -9,12 +9,7 @@ import time
 from pathlib import Path
 from elasticsearch import Elasticsearch, helpers
 from elasticsearch.exceptions import BadRequestError
-from config import (
-    BM25_INDEX_NAME,
-    BM25_INDEX_CONFIG,
-    SVM_INDEX_NAME,
-    SVM_INDEX_CONFIG,
-)
+from config import config
 from .embedding_service import EmbeddingService, format_semantic_content
 from tqdm import tqdm
 
@@ -143,8 +138,8 @@ class IndexManager:
         Returns:
             Tuple[bool, bool, int, int]: ingest_bm25, ingest_svm, bm25_count, svm_count
         """
-        bm25_count = es_client.count(index=BM25_INDEX_NAME)["count"]
-        svm_count = es_client.count(index=SVM_INDEX_NAME)["count"]
+        bm25_count = es_client.count(index=config.BM25_INDEX_NAME)["count"]
+        svm_count = es_client.count(index=config.SVM_INDEX_NAME)["count"]
         return bm25_count == 0, svm_count == 0, bm25_count, svm_count
 
     @staticmethod
@@ -159,8 +154,8 @@ class IndexManager:
         """
         if not ingest_bm25 and not ingest_svm:
             print("✓ Both indices already contain data")
-            print(f"  - {BM25_INDEX_NAME}: {bm25_count} documents")
-            print(f"  - {SVM_INDEX_NAME}: {svm_count} documents")
+            print(f"  - {config.BM25_INDEX_NAME}: {bm25_count} documents")
+            print(f"  - {config.SVM_INDEX_NAME}: {svm_count} documents")
             print("=" * 70)
             return False
 
@@ -229,22 +224,22 @@ class IndexManager:
         print("=" * 70)
 
         # Create BM25 index
-        print(f"\n1. Setting up BM25 Index: '{BM25_INDEX_NAME}'")
+        print(f"\n1. Setting up BM25 Index: '{config.BM25_INDEX_NAME}'")
         print("   Similarity: Default (BM25)")
         bm25_ok = IndexManager.create_index_if_not_exists(
             es_client=es_client,
-            index_name=BM25_INDEX_NAME,
-            index_config=BM25_INDEX_CONFIG,
+            index_name=config.BM25_INDEX_NAME,
+            index_config=config.BM25_INDEX_CONFIG,
         )
 
         # Create SVM index
-        print(f"\n2. Setting up SVM Index: '{SVM_INDEX_NAME}'")
+        print(f"\n2. Setting up SVM Index: '{config.SVM_INDEX_NAME}'")
         print("   Similarity: Scripted (TF-IDF - Vector Space Model)")
         print("   Formula: score = query.boost × √(freq) × idf × (1/√(length))")
         svm_ok = IndexManager.create_index_if_not_exists(
             es_client=es_client,
-            index_name=SVM_INDEX_NAME,
-            index_config=SVM_INDEX_CONFIG,
+            index_name=config.SVM_INDEX_NAME,
+            index_config=config.SVM_INDEX_CONFIG,
         )
 
         if not (bm25_ok and svm_ok):
@@ -255,8 +250,8 @@ class IndexManager:
         print("\n" + "=" * 70)
         print("✓ INDICES INITIALIZED SUCCESSFULLY")
         print("=" * 70)
-        print(f"\nBM25 Index:  {BM25_INDEX_NAME}")
-        print(f"SVM Index:   {SVM_INDEX_NAME}")
+        print(f"\nBM25 Index:  {config.BM25_INDEX_NAME}")
+        print(f"SVM Index:   {config.SVM_INDEX_NAME}")
 
         # Try multiple locations for the CSV file
         # Order: Docker volume mount first, then local dev paths
@@ -316,8 +311,8 @@ class IndexManager:
 
             indexer = BulkIndexingService(
                 es_client=es_client,
-                bm25_index_name=BM25_INDEX_NAME,
-                svm_index_name=SVM_INDEX_NAME,
+                bm25_index_name=config.BM25_INDEX_NAME,
+                svm_index_name=config.SVM_INDEX_NAME,
                 ingest_bm25=ingest_bm25,
                 ingest_svm=ingest_svm,
             )
@@ -391,17 +386,17 @@ class IndexManager:
             # Refresh indices after bulk ingestion
             if doc_count > 0:
                 if ingest_bm25:
-                    es_client.indices.refresh(index=BM25_INDEX_NAME)
+                    es_client.indices.refresh(index=config.BM25_INDEX_NAME)
                 if ingest_svm:
-                    es_client.indices.refresh(index=SVM_INDEX_NAME)
+                    es_client.indices.refresh(index=config.SVM_INDEX_NAME)
 
                 print(
-                    f"✓ Successfully indexed {doc_count} documents to {'both indices' if ingest_bm25 and ingest_svm else BM25_INDEX_NAME if ingest_bm25 else SVM_INDEX_NAME}"
+                    f"✓ Successfully indexed {doc_count} documents to {'both indices' if ingest_bm25 and ingest_svm else config.BM25_INDEX_NAME if ingest_bm25 else config.SVM_INDEX_NAME}"
                 )
                 if ingest_bm25:
-                    print(f"  - {BM25_INDEX_NAME} (BM25 with semantic embeddings)")
+                    print(f"  - {config.BM25_INDEX_NAME} (BM25 with semantic embeddings)")
                 if ingest_svm:
-                    print(f"  - {SVM_INDEX_NAME} (TF-IDF)")
+                    print(f"  - {config.SVM_INDEX_NAME} (TF-IDF)")
                 print("=" * 70)
                 return True
             else:

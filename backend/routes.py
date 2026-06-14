@@ -1,16 +1,24 @@
 from fastapi import APIRouter, HTTPException, Request
 from elasticsearch.exceptions import ConnectionError, NotFoundError, BadRequestError
 
-from config import BM25_INDEX_NAME, SVM_INDEX_NAME
+from config import config
 from models.search import (
     SearchRequest,
     Bm25IdNameSearchRequest,
+    GenerateQrelsRequest,
+    GenerateQrelsResponse,
     MultiAlgorithmSearchResponse,
     Bm25IdNameSearchResponse,
     FiltersResponse,
 )
 from services.search import SearchService
 from services.filters import FiltersService
+from services.qrels_generation import (
+    QrelsGenerationService,
+    MissingGeminiApiKeyError,
+    GeminiApiError,
+    InvalidLlmResponseError,
+)
 
 router = APIRouter()
 
@@ -25,7 +33,7 @@ async def health_check():
     return {
         "status": "healthy",
         "elasticsearch": "connected",
-        "indices": {"bm25": BM25_INDEX_NAME, "svm": SVM_INDEX_NAME},
+        "indices": {"bm25": config.BM25_INDEX_NAME, "svm": config.SVM_INDEX_NAME},
     }
 
 
@@ -94,6 +102,41 @@ async def search_bm25_id_name(request: Bm25IdNameSearchRequest, app_request: Req
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
+@router.post(
+    "/search/generate-qrels",
+    response_model=GenerateQrelsResponse,
+    tags=["Search"],
+    summary="Generate graded qrels with Gemini",
+    description=(
+        "Run plain BM25 top-k search (name_only=true, hybrid=false), then use Gemini "
+        "to assign relevance grades (0-3) to each candidate. Returns only grades > 0."
+    ),
+)
+async def generate_qrels(request: GenerateQrelsRequest, app_request: Request):
+    """
+    Generate query relevance judgments for BM25 top-k candidates using Gemini.
+
+    Response shape: ``{query_text: {doc_id: grade, ...}}`` with the query key trimmed.
+    """
+    try:
+        return QrelsGenerationService.generate(
+            es_client=app_request.app.state.es_client, request=request
+        )
+
+    except MissingGeminiApiKeyError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except (GeminiApiError, InvalidLlmResponseError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except (ConnectionError, NotFoundError) as e:
+        raise HTTPException(status_code=503, detail=f"Elasticsearch error: {str(e)}")
+    except BadRequestError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid search query: {str(e)}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Search error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
 @router.get(
     "/filters",
     response_model=FiltersResponse,
@@ -111,7 +154,7 @@ async def get_filters(app_request: Request):
     try:
         filters_data = FiltersService.get_all_filters(
             es_client=app_request.app.state.es_client,
-            index_name=BM25_INDEX_NAME,
+            index_name=config.BM25_INDEX_NAME,
         )
 
         return FiltersResponse(**filters_data)

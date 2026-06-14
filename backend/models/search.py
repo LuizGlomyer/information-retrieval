@@ -4,8 +4,8 @@ Provides data validation and type safety for the API.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict, model_serializer
-from config import DEFAULT_RESULT_SIZE, MIN_RESULT_SIZE, MAX_RESULT_SIZE
+from pydantic import BaseModel, Field, ConfigDict, RootModel, model_serializer
+from config import config
 
 
 class DateRangeFilter(BaseModel):
@@ -90,9 +90,9 @@ class SearchRequest(BaseModel):
         ..., min_length=1, max_length=500, description="Search query string"
     )
     size: int = Field(
-        default=DEFAULT_RESULT_SIZE,
-        ge=MIN_RESULT_SIZE,
-        le=MAX_RESULT_SIZE,
+        default=config.DEFAULT_RESULT_SIZE,
+        ge=config.MIN_RESULT_SIZE,
+        le=config.MAX_RESULT_SIZE,
         description="Number of results to return",
     )
     filters: Optional[FilterCriteria] = Field(
@@ -123,6 +123,31 @@ class Bm25IdNameSearchRequest(SearchRequest):
         default=False,
         description="If true, perform BM25 hybrid ranking instead of plain BM25.",
     )
+
+
+class GenerateQrelsRequest(BaseModel):
+    """Request body for LLM-based qrels generation from BM25 top-k candidates."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query_text: str = Field(
+        ..., min_length=1, max_length=500, description="Search query string"
+    )
+    size: int = Field(
+        default=config.DEFAULT_RESULT_SIZE,
+        ge=config.MIN_RESULT_SIZE,
+        le=config.MAX_RESULT_SIZE,
+        description="Number of BM25 candidates to judge",
+    )
+    filters: Optional[FilterCriteria] = Field(
+        None, description="Optional filtering criteria"
+    )
+
+
+class GenerateQrelsResponse(RootModel[Dict[str, Dict[str, int]]]):
+    """Query-keyed graded relevance judgments, e.g. {\"super mario\": {\"21919\": 3}}."""
+
+    root: Dict[str, Dict[str, int]]
 
 
 class GameIdName(BaseModel):
