@@ -40,6 +40,7 @@ async def health_check():
 @router.post(
     "/search",
     response_model=MultiAlgorithmSearchResponse,
+    response_model_exclude_none=True,
     tags=["Search"],
     summary="Multi-Algorithm Search (BM25 + SVM)",
     description="Search with BM25 and SVM ranking algorithms",

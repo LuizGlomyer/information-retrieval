@@ -18,6 +18,7 @@ http:
       //    "query_text": "super marios",
       //   "explain": true,
         "metrics": true,
+        "rerank": true,
         "size": 10,
         "filters": {
           "genres": [

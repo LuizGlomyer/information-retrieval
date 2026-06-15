@@ -110,6 +110,10 @@ class SearchRequest(BaseModel):
             "metrics are zero"
         ),
     )
+    rerank: bool = Field(
+        default=False,
+        description="If true, run cross-encoder reranking for all algorithm results",
+    )
 
 
 class Bm25IdNameSearchRequest(SearchRequest):
@@ -393,6 +397,15 @@ class MultiAlgorithmSearchResponse(BaseModel):
     svm: AlgorithmResult = Field(
         ..., description="Results from SVM (TF-IDF + cosine similarity) algorithm"
     )
-    bm25_hybrid_crossencoder: AlgorithmResult = Field(
-        ..., description="BM25 hybrid candidates rescored with a cross-encoder reranker"
+    bm25_crossencoder: Optional[AlgorithmResult] = Field(
+        default=None, description="BM25 candidates rescored with a cross-encoder reranker"
+    )
+    bm25_hybrid_crossencoder: Optional[AlgorithmResult] = Field(
+        default=None, description="BM25 hybrid candidates rescored with a cross-encoder reranker"
+    )
+    bert_crossencoder: Optional[AlgorithmResult] = Field(
+        default=None, description="BERT candidates rescored with a cross-encoder reranker"
+    )
+    svm_crossencoder: Optional[AlgorithmResult] = Field(
+        default=None, description="SVM candidates rescored with a cross-encoder reranker"
     )
