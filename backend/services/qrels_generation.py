@@ -10,9 +10,38 @@ from google import genai
 from google.genai import types
 
 from config import config
-from models.search import Bm25IdNameSearchRequest, GenerateQrelsRequest
-from qrels import normalized_query_key
-from services.search import SearchService
+from models.search import Bm25IdNameSearchRequest, GenerateQrelsRequest, GenerateQrelsResponse
+from services.qrels import QREL_SUPER_MARIO, QREL_MORTAL_KOMBAT, QREL_SPARTAN_WARRIOR_PROTAGONIST, QREL_BASKETBALL_GOOD_MOVEMENT
+
+
+QUERY_QRELS = {
+    "super mario": QREL_SUPER_MARIO,
+    "combat that is mortal": QREL_MORTAL_KOMBAT, 
+    "spartan warrior protagonist": QREL_SPARTAN_WARRIOR_PROTAGONIST,
+    "basketball with good movement": QREL_BASKETBALL_GOOD_MOVEMENT,
+}
+
+
+def normalized_query_key(query_text: str) -> str:
+    """Single normalization rule for qrels lookup and validation."""
+    return query_text.strip()
+
+
+def graded_qrels_for_query(query_text: str) -> dict[str, float]:
+    """
+    Return doc_id -> relevance grade for the normalized query key.
+
+    Returns an empty dict when the query is not in ``QUERY_QRELS`` or has no grades.
+    """
+    key = normalized_query_key(query_text)
+    raw = QUERY_QRELS.get(key)
+    if not raw:
+        return {}
+    return {
+        str(doc_id): float(grade)
+        for doc_id, grade in raw.items()
+        if isinstance(grade, (int, float)) and not isinstance(grade, bool)
+    }
 
 
 class QrelsGenerationError(Exception):
@@ -35,38 +64,70 @@ class QrelsGenerationService:
     @staticmethod
     def generate(
         es_client: Elasticsearch, request: GenerateQrelsRequest
-    ) -> dict[str, dict[str, int]]:
+    ) -> GenerateQrelsResponse:
         if not config.GEMINI_API_KEY:
             raise MissingGeminiApiKeyError("GEMINI_API_KEY is not configured")
 
+        from services.search import SearchService
+
         query_key = normalized_query_key(request.query_text)
-        bm25_request = Bm25IdNameSearchRequest(
+        base_search_request = Bm25IdNameSearchRequest(
             query_text=request.query_text,
             size=request.size,
             filters=request.filters,
             name_only=True,
             hybrid=False,
         )
-        search_response = SearchService.execute_bm25_id_name_search(
-            es_client=es_client, request=bm25_request
-        )
-        if not search_response.results:
-            return {query_key: {}}
 
-        candidates = [
-            {"id": result.id, "name": result.name}
-            for result in search_response.results
-        ]
-        candidate_ids = {result.id for result in search_response.results}
+        bm25_results = SearchService.execute_bm25_id_name_search(
+            es_client=es_client, request=base_search_request
+        )
+
+        hybrid_search_request = base_search_request.model_copy(update={"hybrid": True})
+        bm25_hybrid_results = SearchService.execute_bm25_id_name_search(
+            es_client=es_client, request=hybrid_search_request
+        )
+
+        search_request = base_search_request.model_copy(update={"name_only": True, "hybrid": False})
+        bert_results = SearchService.execute_bert_id_name_search(
+            es_client=es_client, request=search_request
+        )
+        svm_results = SearchService.execute_svm_id_name_search(
+            es_client=es_client, request=search_request
+        )
+
+        all_results = []
+        seen_ids = set()
+
+        for result_set in (bm25_results, bm25_hybrid_results, bert_results, svm_results):
+            for result in result_set.results:
+                if result.id not in seen_ids:
+                    seen_ids.add(result.id)
+                    all_results.append({"id": result.id, "name": result.name})
+
+        print(f"Qrels generation will judge {len(all_results)} unique candidates for query={request.query_text!r}")
+
+        if not all_results:
+            return GenerateQrelsResponse(
+                filtered={"total": 0, "qrels": {}},
+                gemini_response={"total": 0, "qrels": {}},
+            )
+
         raw_grades = QrelsGenerationService._grade_with_gemini(
             query_text=request.query_text,
-            candidates=candidates,
+            candidates=all_results,
         )
-        validated = QrelsGenerationService._validate_grades(raw_grades, candidate_ids)
+        validated = QrelsGenerationService._validate_grades(raw_grades, seen_ids)
+        print(f"Gemini returned grades for {len(validated)} documents")
         filtered = {
             doc_id: grade for doc_id, grade in validated.items() if grade > 0
         }
-        return {query_key: filtered}
+        print(f"Filtered to {len(filtered)} relevant documents (grade > 0)")
+        
+        return GenerateQrelsResponse(
+            filtered={"total": len(filtered), "qrels": {query_key: filtered}},
+            gemini_response={"total": len(raw_grades), "qrels": {query_key: raw_grades}},
+        )
 
     @staticmethod
     def _grade_with_gemini(

@@ -10,11 +10,28 @@ from models.search import RankedResult, RetrievalMetrics
 
 
 def _ranx_metric_names(size: int) -> list[str]:
-    names = ["precision@1", "ndcg@1", "recall@1", "f1@1", "map"]
+    names = [
+        "precision@1",
+        "ndcg@1",
+        "recall@1",
+        "f1@1",
+        "map",
+        "mrr",
+    ]
     if size >= 5:
-        names.extend(["precision@5", "ndcg@5", "recall@5", "f1@5"])
+        names.extend([
+            "precision@5",
+            "ndcg@5",
+            "recall@5",
+            "f1@5",
+        ])
     if size >= 10:
-        names.extend(["precision@10", "ndcg@10", "recall@10", "f1@10"])
+        names.extend([
+            "precision@10",
+            "ndcg@10",
+            "recall@10",
+            "f1@10",
+        ])
     return names
 
 
@@ -27,15 +44,24 @@ def _metrics_from_ranx(raw: dict[str, float], size: int) -> RetrievalMetrics:
         "ndcg_at_1": pick("ndcg@1"),
         "f1_at_1": pick("f1@1"),
         "mean_average_precision": pick("map"),
+        "mrr": pick("mrr"),
     }
     if size >= 5:
-        data["precision_at_5"] = pick("precision@5")
-        data["ndcg_at_5"] = pick("ndcg@5")
-        data["f1_at_5"] = pick("f1@5")
+        data.update(
+            {
+                "precision_at_5": pick("precision@5"),
+                "ndcg_at_5": pick("ndcg@5"),
+                "f1_at_5": pick("f1@5"),
+            }
+        )
     if size >= 10:
-        data["precision_at_10"] = pick("precision@10")
-        data["ndcg_at_10"] = pick("ndcg@10")
-        data["f1_at_10"] = pick("f1@10")
+        data.update(
+            {
+                "precision_at_10": pick("precision@10"),
+                "ndcg_at_10": pick("ndcg@10"),
+                "f1_at_10": pick("f1@10"),
+            }
+        )
     return RetrievalMetrics(**data)
 
 
@@ -45,6 +71,7 @@ def _zero_metrics(size: int) -> RetrievalMetrics:
         "ndcg_at_1": 0.0,
         "f1_at_1": 0.0,
         "mean_average_precision": 0.0,
+        "mrr": 0.0,
     }
     if size >= 5:
         data.update(

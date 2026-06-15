@@ -10,7 +10,10 @@ http:
     type: json
     data: |-
       {
-        "query_text": "super mario", 
+      //   "query_text": "super mario", 
+      //   "query_text": "combat that is mortal",
+      //   "query_text": "spartan warrior protagonist",
+        "query_text": "basketball with good movement",
         "size": 10,
           "filters": {
           "genres": [

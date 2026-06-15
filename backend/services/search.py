@@ -23,7 +23,7 @@ from services.reranker_service import RerankerService
 from services.query_builder import QueryBuilder
 from services.retrieval_metrics import compute_retrieval_metrics
 from config import config
-from qrels import graded_qrels_for_query, normalized_query_key
+from services.qrels_generation import graded_qrels_for_query, normalized_query_key
 
 
 class SearchService:
@@ -94,17 +94,49 @@ class SearchService:
             if request.hybrid
             else SearchService._execute_bm25(es_client=es_client, request=request)
         )
+        return SearchService._id_name_response_from_algorithm_result(
+            algorithm_result=bm25_result, name_only=request.name_only
+        )
+
+    @staticmethod
+    def execute_bert_id_name_search(
+        es_client: Elasticsearch, request: Bm25IdNameSearchRequest
+    ) -> Bm25IdNameSearchResponse:
+        """
+        Execute BERT semantic search and return id/name results.
+        """
+        bert_result = SearchService._execute_bert(es_client=es_client, request=request)
+        return SearchService._id_name_response_from_algorithm_result(
+            algorithm_result=bert_result, name_only=request.name_only
+        )
+
+    @staticmethod
+    def execute_svm_id_name_search(
+        es_client: Elasticsearch, request: Bm25IdNameSearchRequest
+    ) -> Bm25IdNameSearchResponse:
+        """
+        Execute SVM search and return id/name results.
+        """
+        svm_result = SearchService._execute_svm(es_client=es_client, request=request)
+        return SearchService._id_name_response_from_algorithm_result(
+            algorithm_result=svm_result, name_only=request.name_only
+        )
+
+    @staticmethod
+    def _id_name_response_from_algorithm_result(
+        algorithm_result: AlgorithmResult, name_only: bool
+    ) -> Bm25IdNameSearchResponse:
         return Bm25IdNameSearchResponse(
             results=[
                 GameIdName(
                     id=result.id,
                     name=result.name,
-                    platforms=None if request.name_only else result.platforms,
+                    platforms=None if name_only else result.platforms,
                 )
-                for result in bm25_result.results
+                for result in algorithm_result.results
             ],
-            total=bm25_result.total,
-            execution_time_ms=bm25_result.execution_time_ms,
+            total=algorithm_result.total,
+            execution_time_ms=algorithm_result.execution_time_ms,
         )
 
     @staticmethod

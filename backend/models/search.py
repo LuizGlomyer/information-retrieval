@@ -148,10 +148,15 @@ class GenerateQrelsRequest(BaseModel):
     )
 
 
-class GenerateQrelsResponse(RootModel[Dict[str, Dict[str, int]]]):
-    """Query-keyed graded relevance judgments, e.g. {\"super mario\": {\"21919\": 3}}."""
+class GenerateQrelsResponse(BaseModel):
+    """Qrels generation response with filtered and raw Gemini results."""
 
-    root: Dict[str, Dict[str, int]]
+    filtered: dict = Field(
+        ..., description="Filtered relevance judgments (grade > 0) with total count"
+    )
+    gemini_response: dict = Field(
+        ..., description="Raw Gemini response with all grades (0-3) and total count"
+    )
 
 
 class GameIdName(BaseModel):
@@ -302,6 +307,7 @@ class RetrievalMetrics(BaseModel):
         None, ge=0.0, le=1.0, description="Included when request size >= 10"
     )
     mean_average_precision: float = Field(..., ge=0.0, le=1.0)
+    mrr: float = Field(..., ge=0.0, le=1.0)
     f1_at_1: float = Field(..., ge=0.0, le=1.0)
     f1_at_5: Optional[float] = Field(
         None, ge=0.0, le=1.0, description="Included when request size >= 5"
