@@ -215,6 +215,36 @@ class SearchService:
                     }
                 )
 
+                if getattr(request, "rerank", False):
+                    bm25_crossencoder_result = bm25_crossencoder_result.model_copy(
+                        update={
+                            "metrics": compute_retrieval_metrics(
+                                qid, bm25_crossencoder_result.results, grades, request.size
+                            ),
+                        }
+                    )
+                    bm25_hybrid_crossencoder_result = bm25_hybrid_crossencoder_result.model_copy(
+                        update={
+                            "metrics": compute_retrieval_metrics(
+                                qid, bm25_hybrid_crossencoder_result.results, grades, request.size
+                            ),
+                        }
+                    )
+                    bert_crossencoder_result = bert_crossencoder_result.model_copy(
+                        update={
+                            "metrics": compute_retrieval_metrics(
+                                qid, bert_crossencoder_result.results, grades, request.size
+                            ),
+                        }
+                    )
+                    svm_crossencoder_result = svm_crossencoder_result.model_copy(
+                        update={
+                            "metrics": compute_retrieval_metrics(
+                                qid, svm_crossencoder_result.results, grades, request.size
+                            ),
+                        }
+                    )
+
             return MultiAlgorithmSearchResponse(
                 bm25=bm25_result,
                 bm25_hybrid=bm25_hybrid_result,
