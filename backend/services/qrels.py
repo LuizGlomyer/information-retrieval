@@ -206,7 +206,6 @@ QREL_BASKETBALL_GOOD_MOVEMENT = {
     "8672": 2
   }
 
-
 QREL_ZELDA_GAMES = {
   "1030": 3,
   "534": 3,
