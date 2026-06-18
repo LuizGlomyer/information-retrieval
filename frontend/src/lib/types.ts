@@ -2,9 +2,13 @@
 
 export type ModelId =
   | "bm25"
-  | "svm"
+  | "bm25_hybrid"
   | "bert"
-  | "bert_finetuned";
+  | "svm"
+  | "bm25_crossencoder"
+  | "bm25_hybrid_crossencoder"
+  | "bert_crossencoder"
+  | "svm_crossencoder";
 
 export interface ModelMeta {
   id: ModelId;
@@ -31,6 +35,20 @@ export interface MetricScores {
 
 export type MetricKey = keyof MetricScores;
 
+export interface RetrievalMetrics {
+  precision_at_1: number;
+  precision_at_5?: number;
+  precision_at_10?: number;
+  mean_average_precision: number;
+  mrr: number;
+  f1_at_1: number;
+  f1_at_5?: number;
+  f1_at_10?: number;
+  ndcg_at_1: number;
+  ndcg_at_5?: number;
+  ndcg_at_10?: number;
+}
+
 export interface GameResult {
   id: string;
   name: string;
@@ -53,6 +71,7 @@ export interface AlgorithmResult {
   results: RankedResult[];
   total: number;
   execution_time_ms: number;
+  metrics?: RetrievalMetrics;
 }
 
 export type MultiAlgorithmSearchResponse = Partial<Record<ModelId, AlgorithmResult>>;
@@ -61,4 +80,7 @@ export interface SearchRequest {
   query_text: string;
   models: ModelId[];
   size?: number;
+  rerank?: boolean;
+  metrics?: boolean;
 }
+

@@ -279,11 +279,12 @@ class QueryBuilder:
         function: Dict[str, Any] = {
             "script_score": {
                 "script": {
-                    "source": "cosineSimilarity(params.query_vector, 'semantic_embedding') + 1.0",
+                    "source": "doc['semantic_embedding'].size() == 0 ? 0.0 : cosineSimilarity(params.query_vector, 'semantic_embedding') + 1.0",
                     "params": {"query_vector": query_vector},
                 }
             }
         }
+
 
         if weight is not None:
             function["weight"] = weight

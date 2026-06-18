@@ -49,6 +49,14 @@ class SearchService:
         return SearchService._reranker_service
 
     @staticmethod
+    def initialize_models() -> None:
+        """Pre-load the embedding and reranker models at startup to avoid runtime request latency."""
+        es = SearchService._get_embedding_service()
+        es._load_model()
+        rs = SearchService._get_reranker_service()
+        rs._load_model()
+
+    @staticmethod
     def execute_search(
         es_client: Elasticsearch, request: SearchRequest
     ) -> MultiAlgorithmSearchResponse:
@@ -172,6 +180,11 @@ class SearchService:
             ValueError: If response parsing fails
         """
         try:
+            # Generate query embedding once to reuse for both hybrid and BERT models
+            query_vector = SearchService._get_embedding_service().embed(
+                request.query_text
+            )
+
             # Execute BM25 algorithm (from BM25 index)
             bm25_result = SearchService._execute_bm25(
                 es_client=es_client, request=request
@@ -179,12 +192,12 @@ class SearchService:
 
             # Execute BM25 hybrid algorithm: BM25 base ranking + semantic_embedding matching
             bm25_hybrid_result = SearchService._execute_bm25_hybrid(
-                es_client=es_client, request=request
+                es_client=es_client, request=request, query_vector=query_vector
             )
 
             # Execute BERT-style semantic embedding search against BM25 index
             bert_result = SearchService._execute_bert(
-                es_client=es_client, request=request
+                es_client=es_client, request=request, query_vector=query_vector
             )
 
             # Execute SVM algorithm (from SVM index with TF-IDF scripted similarity)
@@ -192,23 +205,71 @@ class SearchService:
                 es_client=es_client, request=request
             )
 
-            # Optionally rerank results with a cross-encoder for all algorithms
+            # Optionally rerank results with a cross-encoder for all algorithms (batched and deduplicated)
             if getattr(request, "rerank", False):
-                bm25_crossencoder_result = SearchService._execute_crossencoder_rerank(
-                    bm25_result, request.query_text, "bm25"
-                )
+                # Gather all results and deduplicate by ID, preferring documents with semantic_text
+                unique_docs = {}
+                for algo_res in [bm25_result, bm25_hybrid_result, bert_result, svm_result]:
+                    if algo_res and algo_res.results:
+                        for rr in algo_res.results:
+                            existing = unique_docs.get(rr.id)
+                            if not existing or (not existing.semantic_text and rr.semantic_text):
+                                unique_docs[rr.id] = rr
 
-                bm25_hybrid_crossencoder_result = SearchService._execute_crossencoder_rerank(
-                    bm25_hybrid_result, request.query_text, "bm25_hybrid"
-                )
+                # Construct unique pairs
+                pairs = []
+                doc_ids = []
+                for doc_id, rr in unique_docs.items():
+                    doc_text = rr.semantic_text or f"{rr.name}\n{rr.summary or ''}"
+                    pairs.append([request.query_text, doc_text])
+                    doc_ids.append(doc_id)
 
-                bert_crossencoder_result = SearchService._execute_crossencoder_rerank(
-                    bert_result, request.query_text, "bert"
-                )
+                # Score all unique pairs in a single batch predict call
+                if pairs:
+                    shared_start = time.time()
+                    scores_list = SearchService._get_reranker_service().score_pairs(pairs)
+                    shared_inference_time_ms = int((time.time() - shared_start) * 1000)
+                    id_to_score = dict(zip(doc_ids, scores_list))
+                else:
+                    shared_inference_time_ms = 0
+                    id_to_score = {}
 
-                svm_crossencoder_result = SearchService._execute_crossencoder_rerank(
-                    svm_result, request.query_text, "svm"
-                )
+                # Helper function to map scores back, sort, and update ranks
+                def rescore_result(algo_res: AlgorithmResult, label: str) -> AlgorithmResult:
+                    if not algo_res or not algo_res.results:
+                        return AlgorithmResult(results=[], total=algo_res.total if algo_res else 0, execution_time_ms=0)
+                    
+                    mapping_start = time.time()
+                    
+                    scored = []
+                    for rr in algo_res.results:
+                        score = id_to_score.get(rr.id, 0.0)
+                        scored.append((rr, score))
+                    
+                    scored.sort(key=lambda x: x[1], reverse=True)
+                    
+                    reranked_results = []
+                    for rank, (rr, score) in enumerate(scored, start=1):
+                        updated = rr.model_copy(update={
+                            "score": float(score),
+                            "rank": rank,
+                            "algorithm": f"{label}_crossencoder",
+                        })
+                        reranked_results.append(updated)
+                    
+                    mapping_time_ms = int((time.time() - mapping_start) * 1000)
+                    
+                    return AlgorithmResult(
+                        results=reranked_results,
+                        total=algo_res.total,
+                        execution_time_ms=shared_inference_time_ms + mapping_time_ms,
+                        explanations=None,
+                    )
+
+                bm25_crossencoder_result = rescore_result(bm25_result, "bm25")
+                bm25_hybrid_crossencoder_result = rescore_result(bm25_hybrid_result, "bm25_hybrid")
+                bert_crossencoder_result = rescore_result(bert_result, "bert")
+                svm_crossencoder_result = rescore_result(svm_result, "svm")
             else:
                 bm25_crossencoder_result = None
                 bm25_hybrid_crossencoder_result = None
@@ -355,7 +416,7 @@ class SearchService:
 
     @staticmethod
     def _execute_bm25_hybrid(
-        es_client: Elasticsearch, request: SearchRequest
+        es_client: Elasticsearch, request: SearchRequest, query_vector: Optional[List[float]] = None
     ) -> AlgorithmResult:
         """
         Execute BM25 hybrid search.
@@ -368,9 +429,10 @@ class SearchService:
         start_time = time.time()
 
         try:
-            query_vector = SearchService._get_embedding_service().embed(
-                request.query_text
-            )
+            if query_vector is None:
+                query_vector = SearchService._get_embedding_service().embed(
+                    request.query_text
+                )
             query_body = QueryBuilder.build_bm25_hybrid_search_body(
                 request, query_vector
             )
@@ -446,7 +508,7 @@ class SearchService:
 
     @staticmethod
     def _execute_bert(
-        es_client: Elasticsearch, request: SearchRequest
+        es_client: Elasticsearch, request: SearchRequest, query_vector: Optional[List[float]] = None
     ) -> AlgorithmResult:
         """
         Execute a BERT-style semantic embedding search using BM25 index.
@@ -458,9 +520,10 @@ class SearchService:
         start_time = time.time()
 
         try:
-            query_vector = SearchService._get_embedding_service().embed(
-                request.query_text
-            )
+            if query_vector is None:
+                query_vector = SearchService._get_embedding_service().embed(
+                    request.query_text
+                )
             query_body = QueryBuilder.build_bert_search_body(request, query_vector)
             response = es_client.search(index=config.BM25_INDEX_NAME, body=query_body)
             explanations = (

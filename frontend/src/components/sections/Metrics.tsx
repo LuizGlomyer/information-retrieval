@@ -12,7 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { useLanguage } from "@/components/LanguageProvider";
-import { ALL_METRIC_KEYS, MODELS, MODEL_METRICS } from "@/lib/models";
+import { ALL_METRIC_KEYS, MODELS, MODEL_METRICS, RERANK_MODEL_METRICS } from "@/lib/models";
 import type { MetricKey, ModelId } from "@/lib/types";
 import { SectionHeading } from "./Pipeline";
 
@@ -21,14 +21,17 @@ const KEY_METRICS: MetricKey[] = ["NDCG@10", "MAP", "P@5", "F1"];
 export const Metrics = () => {
   const { t } = useLanguage();
   const [selected, setSelected] = useState<MetricKey>("NDCG@10");
+  const [useRerank, setUseRerank] = useState(false);
+
+  const activeMetrics = useRerank ? RERANK_MODEL_METRICS : MODEL_METRICS;
 
   const barData = useMemo(
     () =>
       MODELS.map((m) => ({
         model: m.shortName,
-        score: MODEL_METRICS[m.id][selected],
+        score: activeMetrics[m.id][selected],
       })),
-    [selected],
+    [selected, activeMetrics],
   );
 
   const lineData = useMemo(
@@ -36,11 +39,11 @@ export const Metrics = () => {
       ALL_METRIC_KEYS.map((k) => {
         const row: Record<string, string | number> = { metric: k };
         MODELS.forEach((m) => {
-          row[m.shortName] = MODEL_METRICS[m.id][k];
+          row[m.shortName] = activeMetrics[m.id][k];
         });
         return row;
       }),
-    [],
+    [activeMetrics],
   );
 
   return (
@@ -52,23 +55,51 @@ export const Metrics = () => {
           lede={t.metrics.heading.lede}
         />
 
-        <div className="mt-12 flex flex-wrap items-center gap-2">
-          <span className="mr-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            {t.metrics.compareOn}
-          </span>
-          {KEY_METRICS.map((m) => (
+        <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+              {t.metrics.compareOn}
+            </span>
+            {KEY_METRICS.map((m) => (
+              <button
+                key={m}
+                onClick={() => setSelected(m)}
+                className={`rounded-full border px-3 py-1 font-mono text-xs transition-colors ${
+                  selected === m
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+              {t.metrics.rankingMode}
+            </span>
             <button
-              key={m}
-              onClick={() => setSelected(m)}
+              onClick={() => setUseRerank(false)}
               className={`rounded-full border px-3 py-1 font-mono text-xs transition-colors ${
-                selected === m
+                !useRerank
                   ? "border-foreground bg-foreground text-background"
                   : "border-border bg-card text-muted-foreground hover:text-foreground"
               }`}
             >
-              {m}
+              {t.metrics.modeNormal}
             </button>
-          ))}
+            <button
+              onClick={() => setUseRerank(true)}
+              className={`rounded-full border px-3 py-1 font-mono text-xs transition-colors ${
+                useRerank
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.metrics.modeRerank}
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-5">
@@ -121,7 +152,7 @@ export const Metrics = () => {
               </span>
             </header>
             <p className="mb-4 text-sm text-muted-foreground">
-              {t.metrics.allMetricsDescription}
+              {useRerank ? t.metrics.allMetricsDescriptionRerank : t.metrics.allMetricsDescriptionNormal}
             </p>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -185,7 +216,7 @@ export const Metrics = () => {
               </thead>
               <tbody>
                 {MODELS.map((m) => {
-                  const scores = MODEL_METRICS[m.id];
+                  const scores = activeMetrics[m.id];
                   return (
                     <tr key={m.id} className="border-t border-border transition-colors hover:bg-muted/40">
                       <td className="px-4 py-3 font-medium">
@@ -198,7 +229,7 @@ export const Metrics = () => {
                       </td>
                       {ALL_METRIC_KEYS.map((k) => {
                         const value = scores[k];
-                        const best = Math.max(...MODELS.map((mm) => MODEL_METRICS[mm.id as ModelId][k]));
+                        const best = Math.max(...MODELS.map((mm) => activeMetrics[mm.id as ModelId][k]));
                         const isBest = value === best;
                         return (
                           <td
