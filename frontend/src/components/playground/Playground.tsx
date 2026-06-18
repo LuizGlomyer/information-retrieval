@@ -6,11 +6,13 @@ import { executeSearch } from "@/lib/searchService";
 import type { ModelId, MultiAlgorithmSearchResponse } from "@/lib/types";
 import { SectionHeading } from "../sections/Pipeline";
 import { ResultCard } from "./ResultCard";
+import { useToast } from "@/hooks/use-toast";
 
 type Mode = "single" | "compare";
 
 export const Playground = () => {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [query, setQuery] = useState(t.playground.defaultQuery);
   const [mode, setMode] = useState<Mode>("compare");
   const [activeModel, setActiveModel] = useState<ModelId>("svm");
@@ -18,19 +20,46 @@ export const Playground = () => {
     "bm25",
     "svm",
   ]);
+  const [rerank, setRerank] = useState(false);
+  const [metrics, setMetrics] = useState(false);
   const [response, setResponse] = useState<MultiAlgorithmSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const runSearch = async (q: string = query) => {
+  const runSearch = async (
+    q: string = query,
+    activeRerank: boolean = rerank,
+    activeMetrics: boolean = metrics,
+  ) => {
     if (!q.trim()) return;
     setLoading(true);
     const models = mode === "single" ? [activeModel] : selectedModels;
     try {
-      const res = await executeSearch({ query_text: q, models, size: 6 });
+      const res = await executeSearch({
+        query_text: q,
+        models,
+        size: 6,
+        rerank: activeRerank,
+        metrics: activeMetrics,
+      });
       setResponse(res);
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        variant: "destructive",
+        title: "Erro na busca",
+        description: err.message || "Não foi possível conectar com o servidor.",
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRerankToggle = (val: boolean) => {
+    setRerank(val);
+  };
+
+  const handleMetricsToggle = (val: boolean) => {
+    setMetrics(val);
   };
 
   const toggleSelected = (id: ModelId) => {
@@ -53,7 +82,7 @@ export const Playground = () => {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void runSearch();
+            void runSearch(query, rerank, metrics);
           }}
           className="mt-12 rounded-xl border border-border bg-card p-2 shadow-sm"
         >
@@ -85,7 +114,7 @@ export const Playground = () => {
                 type="button"
                 onClick={() => {
                   setQuery(suggestion);
-                  void runSearch(suggestion);
+                  void runSearch(suggestion, rerank, metrics);
                 }}
                 className="rounded-full border border-border bg-background px-2.5 py-0.5 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               >
@@ -95,7 +124,8 @@ export const Playground = () => {
           </div>
         </form>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-12 md:items-start">
+        <div className="mt-8 grid gap-6 md:grid-cols-12 md:items-start">
+          {/* View Mode */}
           <div className="md:col-span-3">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               {t.playground.viewMode}
@@ -116,7 +146,38 @@ export const Playground = () => {
             </div>
           </div>
 
-          <div className="md:col-span-9">
+          {/* Search Options (Rerank & Metrics) */}
+          <div className="md:col-span-4">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              Opções de Busca
+            </p>
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3">
+              <label className="relative inline-flex items-center cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+                <input
+                  type="checkbox"
+                  checked={rerank}
+                  onChange={(e) => handleRerankToggle(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4 bg-muted rounded-full relative transition-colors mr-2 border border-border/80 peer-checked:bg-foreground after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-foreground peer-checked:after:bg-background after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-4"></div>
+                <span>{t.playground.rerankLabel}</span>
+              </label>
+
+              <label className="relative inline-flex items-center cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+                <input
+                  type="checkbox"
+                  checked={metrics}
+                  onChange={(e) => handleMetricsToggle(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4 bg-muted rounded-full relative transition-colors mr-2 border border-border/80 peer-checked:bg-foreground after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-foreground peer-checked:after:bg-background after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-4"></div>
+                <span>{t.playground.metricsLabel}</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Models Selection */}
+          <div className="md:col-span-5">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               {mode === "single" ? t.playground.model : t.playground.modelsToCompare}
             </p>
@@ -174,8 +235,13 @@ export const Playground = () => {
                   >
                     <header className="mb-4 flex items-baseline justify-between border-b border-border pb-3">
                       <div>
-                        <h3 className="font-serif text-lg font-semibold tracking-tight">
+                        <h3 className="font-serif text-lg font-semibold tracking-tight flex items-center gap-1.5">
                           {meta.name}
+                          {rerank && (
+                            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-1.5 py-0.5 font-mono text-[8px] font-medium text-primary">
+                              CE Rerank
+                            </span>
+                          )}
                         </h3>
                         <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                           {t.models.families[meta.family]}
@@ -190,6 +256,53 @@ export const Playground = () => {
                         </span>
                       </div>
                     </header>
+
+                    {metrics && algo?.metrics && (() => {
+                      const isZero =
+                        algo.metrics.precision_at_1 === 0 &&
+                        algo.metrics.mean_average_precision === 0 &&
+                        algo.metrics.mrr === 0;
+
+                      return (
+                        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3 font-mono text-[11px] animate-fade-in">
+                          <p className="mb-2 font-sans text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {t.playground.metricsHeader}
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                            <div className="rounded border border-border/50 bg-card p-1.5 text-center">
+                              <span className="text-[9px] text-muted-foreground block">P@1</span>
+                              <span className="text-foreground font-semibold">
+                                {algo.metrics.precision_at_1.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="rounded border border-border/50 bg-card p-1.5 text-center">
+                              <span className="text-[9px] text-muted-foreground block">MAP</span>
+                              <span className="text-foreground font-semibold">
+                                {algo.metrics.mean_average_precision.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="rounded border border-border/50 bg-card p-1.5 text-center">
+                              <span className="text-[9px] text-muted-foreground block">MRR</span>
+                              <span className="text-foreground font-semibold">
+                                {algo.metrics.mrr.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="rounded border border-border/50 bg-card p-1.5 text-center">
+                              <span className="text-[9px] text-muted-foreground block">NDCG@10</span>
+                              <span className="text-foreground font-semibold">
+                                {(algo.metrics.ndcg_at_10 ?? 0).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                          {isZero && (
+                            <p className="mt-2 text-[9px] leading-tight text-muted-foreground/80 font-sans italic">
+                              * {t.playground.metricsUnavailable}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
 
                     {algo && algo.results.length > 0 ? (
                       <div className="space-y-3">

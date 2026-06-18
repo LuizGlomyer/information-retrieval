@@ -13,6 +13,28 @@ export const MODELS: ModelMeta[] = [
     status: "stable",
   },
   {
+    id: "bm25_hybrid",
+    name: "BM25 Hybrid",
+    shortName: "Hybrid",
+    family: "neural",
+    tagline: "Lexical & semantic search",
+    description:
+      "Combines lexical BM25 matching with dense vector embedding similarity for a rich, hybrid relevance ranking.",
+    techniques: ["BM25", "BGE Embeddings", "Hybrid fusion"],
+    status: "stable",
+  },
+  {
+    id: "bert",
+    name: "BERT",
+    shortName: "BERT",
+    family: "neural",
+    tagline: "Dense vector retrieval",
+    description:
+      "Dense retrieval using pre-trained BGE embeddings. Computes cosine similarity between query and document vectors.",
+    techniques: ["BGE Embeddings", "Dense Vector", "Cosine similarity"],
+    status: "stable",
+  },
+  {
     id: "svm",
     name: "SVM",
     shortName: "SVM",
@@ -22,28 +44,6 @@ export const MODELS: ModelMeta[] = [
       "Scripted Similarity vector space model based on TF-IDF term frequency and cosine similarity.",
     techniques: ["TF-IDF", "Cosine similarity", "Vector space"],
     status: "stable",
-  },
-  {
-    id: "bert",
-    name: "BERT",
-    shortName: "BERT",
-    family: "neural",
-    tagline: "Pre-trained transformer encoder",
-    description:
-      "Cross-encoder using a pre-trained BERT model. Reads query and document together to produce a contextual relevance score.",
-    techniques: ["Transformer", "Cross-encoder", "Contextual"],
-    status: "experimental",
-  },
-  {
-    id: "bert_finetuned",
-    name: "BERT + Fine-tune",
-    shortName: "BERT FT",
-    family: "neural",
-    tagline: "Fine-tuned on the games corpus",
-    description:
-      "BERT cross-encoder fine-tuned on labeled query-game pairs. Adapts the encoder to gaming vocabulary and editorial relevance.",
-    techniques: ["Fine-tuning", "Domain adaptation", "Pairwise loss"],
-    status: "planned",
   },
 ];
 
@@ -66,22 +66,23 @@ export const MODEL_METRICS: Record<string, MetricScores> = {
     R: 0.41, MAP: 0.46, F1: 0.49,
     "NDCG@1": 0.62, "NDCG@5": 0.58, "NDCG@10": 0.55,
   },
-  svm: {
-    "P@1": 0.71, "P@5": 0.61, "P@10": 0.55,
-    R: 0.48, MAP: 0.55, F1: 0.57,
-    "NDCG@1": 0.71, "NDCG@5": 0.66, "NDCG@10": 0.62,
+  bm25_hybrid: {
+    "P@1": 0.84, "P@5": 0.74, "P@10": 0.66,
+    R: 0.65, MAP: 0.71, F1: 0.71,
+    "NDCG@1": 0.84, "NDCG@5": 0.79, "NDCG@10": 0.75,
   },
   bert: {
     "P@1": 0.74, "P@5": 0.65, "P@10": 0.59,
     R: 0.55, MAP: 0.60, F1: 0.62,
     "NDCG@1": 0.74, "NDCG@5": 0.70, "NDCG@10": 0.67,
   },
-  bert_finetuned: {
-    "P@1": 0.84, "P@5": 0.74, "P@10": 0.66,
-    R: 0.65, MAP: 0.71, F1: 0.71,
-    "NDCG@1": 0.84, "NDCG@5": 0.79, "NDCG@10": 0.75,
+  svm: {
+    "P@1": 0.71, "P@5": 0.61, "P@10": 0.55,
+    R: 0.48, MAP: 0.55, F1: 0.57,
+    "NDCG@1": 0.71, "NDCG@5": 0.66, "NDCG@10": 0.62,
   },
 };
+
 
 export const PIPELINE_STEPS = [
   {

@@ -47,9 +47,12 @@ services:
       - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-elasticsearch}
       - ELASTICSEARCH_PORT=${ELASTICSEARCH_PORT:-9200}
       - FRONTEND_PORT=${FRONTEND_PORT:-8090}
+      - HF_TOKEN=${HF_TOKEN}
+      - HF_HOME=/root/.cache/huggingface
     volumes:
       # Monta o CSV de ingestão dentro do container
       - ./ingestion/game_dataset_cleaned.csv:/app/data/game_dataset_cleaned.csv:ro
+      - hf_cache:/root/.cache/huggingface
     ports:
       - "${BACKEND_PORT:-8080}:${BACKEND_INTERNAL_PORT:-8080}"
     networks:
@@ -78,6 +81,7 @@ services:
 
 volumes:
   es_data:
+  hf_cache:
 
 networks:
   elk:

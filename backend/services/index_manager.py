@@ -55,10 +55,17 @@ class BulkIndexingService:
             )
 
         if self.ingest_bm25:
-            if semantic_text is None:
-                raise ValueError("semantic_text is required for BM25 ingestion")
-            self._pending_docs.append(doc)
-            self._pending_texts.append(semantic_text)
+            if semantic_text:
+                self._pending_docs.append(doc)
+                self._pending_texts.append(semantic_text)
+            else:
+                self._pending_actions.append(
+                    {
+                        "_index": self._bm25_index_name,
+                        "_id": doc["id"],
+                        "_source": doc.copy(),
+                    }
+                )
 
         self.doc_count += 1
         self._maybe_flush()
@@ -368,7 +375,14 @@ class IndexManager:
                     }
 
                     semantic_text = None
-                    if ingest_bm25:
+                    rating_val = IndexManager._parse_float(row.get("rating"))
+                    agg_rating_val = IndexManager._parse_float(row.get("aggregated_rating"))
+                    has_high_rating = (
+                        (rating_val is not None and rating_val >= 75.0) or
+                        (agg_rating_val is not None and agg_rating_val >= 75.0)
+                    )
+
+                    if ingest_bm25 and has_high_rating:
                         semantic_text = format_semantic_content(
                             name=row["name"],
                             summary=row["summary"],

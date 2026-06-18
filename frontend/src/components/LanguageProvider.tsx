@@ -112,25 +112,25 @@ export const translations = {
             "Elasticsearch's native ranking. Term frequency, inverse document frequency and length normalization on each searchable field.",
           techniques: ["TF-IDF", "Length norm", "Multi-match"],
         },
+        bm25_hybrid: {
+          tagline: "Lexical & semantic search",
+          description:
+            "Combines lexical BM25 matching with dense vector embedding similarity for a rich, hybrid relevance ranking.",
+          techniques: ["BM25", "BGE Embeddings", "Hybrid fusion"],
+        },
+        bert: {
+          tagline: "Dense vector retrieval",
+          description:
+            "Dense retrieval using pre-trained BGE embeddings. Computes cosine similarity between query and document vectors.",
+          techniques: ["BGE Embeddings", "Dense Vector", "Cosine similarity"],
+        },
         svm: {
           tagline: "Vector Space Model",
           description:
             "Support Vector Model scoring based on TF-IDF term frequency and cosine similarity. Provides an alternative mathematical ranking perspective.",
           techniques: ["TF-IDF", "Cosine similarity", "Vector space"],
         },
-        bert: {
-          tagline: "Pre-trained transformer encoder",
-          description:
-            "Cross-encoder using a pre-trained BERT model. Reads query and document together to produce a contextual relevance score.",
-          techniques: ["Transformer", "Cross-encoder", "Contextual"],
-        },
-        bert_finetuned: {
-          tagline: "Fine-tuned on the games corpus",
-          description:
-            "BERT cross-encoder fine-tuned on labeled query-game pairs. Adapts the encoder to gaming vocabulary and editorial relevance.",
-          techniques: ["Fine-tuning", "Domain adaptation", "Pairwise loss"],
-        },
-      } satisfies Record<ModelId, { tagline: string; description: string; techniques: string[] }>,
+      } satisfies Record<"bm25" | "bm25_hybrid" | "bert" | "svm", { tagline: string; description: string; techniques: string[] }>,
     },
     metrics: {
       heading: {
@@ -155,14 +155,14 @@ export const translations = {
         lede:
           "Type a search and see how each model ranks the catalog. Switch between viewing a single model in detail or comparing several side by side.",
       },
-      defaultQuery: "open world post-apocalyptic shooter",
+      defaultQuery: "super mario",
       suggestions: [
-        "open world post-apocalyptic shooter",
-        "cozy puzzle relaxing",
-        "cyberpunk stealth hacking",
-        "fantasy rpg knight magic",
+        "super mario",
+        "combat that is mortal",
+        "spartan warrior protagonist",
+        "basketball with good movement",
       ],
-      placeholder: "e.g. cyberpunk stealth hacking...",
+      placeholder: "e.g. super mario...",
       searchLabel: "Search query",
       search: "Search",
       try: "try:",
@@ -178,6 +178,10 @@ export const translations = {
       emptyDescription:
         "Hit search above, or pick one of the suggested queries to see how the rankers respond.",
       runDefault: "Run default query",
+      rerankLabel: "Rerank with Cross-Encoder",
+      metricsLabel: "Calculate IR Metrics",
+      metricsHeader: "IR Evaluation Metrics",
+      metricsUnavailable: "Metrics unavailable for this query",
     },
     resultCard: { coverAlt: "Cover art for", score: "score" },
     notFound: { message: "Oops! Page not found", home: "Return to Home" },
@@ -274,25 +278,25 @@ export const translations = {
             "Ranking nativo do Elasticsearch. Frequencia do termo, frequencia inversa do documento e normalizacao de tamanho em cada campo pesquisavel.",
           techniques: ["TF-IDF", "Normalizacao", "Multi-match"],
         },
+        bm25_hybrid: {
+          tagline: "Busca lexical e semântica",
+          description:
+            "Combina correspondência lexical BM25 com similaridade de embeddings de vetor denso para um ranqueamento híbrido robusto.",
+          techniques: ["BM25", "BGE Embeddings", "Fusão híbrida"],
+        },
+        bert: {
+          tagline: "Busca por vetor denso",
+          description:
+            "Recuperação densa usando embeddings BGE pré-treinados. Calcula similaridade de cosseno entre vetores da consulta e do documento.",
+          techniques: ["BGE Embeddings", "Vetor Denso", "Similaridade de cosseno"],
+        },
         svm: {
           tagline: "Modelo de Vetor Espacial",
           description:
             "Ranqueamento baseado em frequência de termos TF-IDF e similaridade de cosseno (Vector Space Model). Fornece uma perspectiva de ranqueamento alternativa.",
           techniques: ["TF-IDF", "Similaridade de cosseno", "Espaço vetorial"],
         },
-        bert: {
-          tagline: "Encoder transformer pre-treinado",
-          description:
-            "Cross-encoder usando um modelo BERT pre-treinado. Le consulta e documento juntos para produzir uma pontuacao contextual de relevancia.",
-          techniques: ["Transformer", "Cross-encoder", "Contextual"],
-        },
-        bert_finetuned: {
-          tagline: "Fine-tuned no corpus de jogos",
-          description:
-            "Cross-encoder BERT ajustado com pares consulta-jogo rotulados. Adapta o encoder ao vocabulario de games e a relevancia editorial.",
-          techniques: ["Fine-tuning", "Adaptacao de dominio", "Perda pairwise"],
-        },
-      } satisfies Record<ModelId, { tagline: string; description: string; techniques: string[] }>,
+      } satisfies Record<"bm25" | "bm25_hybrid" | "bert" | "svm", { tagline: string; description: string; techniques: string[] }>,
     },
     metrics: {
       heading: {
@@ -317,14 +321,14 @@ export const translations = {
         lede:
           "Digite uma busca e veja como cada modelo ranqueia o catalogo. Alterne entre ver um modelo em detalhe ou comparar varios lado a lado.",
       },
-      defaultQuery: "open world post-apocalyptic shooter",
+      defaultQuery: "super mario",
       suggestions: [
-        "open world post-apocalyptic shooter",
-        "cozy puzzle relaxing",
-        "cyberpunk stealth hacking",
-        "fantasy rpg knight magic",
+        "super mario",
+        "combat that is mortal",
+        "spartan warrior protagonist",
+        "basketball with good movement",
       ],
-      placeholder: "ex.: cyberpunk stealth hacking...",
+      placeholder: "ex.: super mario...",
       searchLabel: "Consulta de busca",
       search: "Buscar",
       try: "teste:",
@@ -340,6 +344,10 @@ export const translations = {
       emptyDescription:
         "Busque acima ou escolha uma consulta sugerida para ver como os rankers respondem.",
       runDefault: "Executar busca padrao",
+      rerankLabel: "Re-ranquear com Cross-Encoder",
+      metricsLabel: "Calcular Métricas de RI",
+      metricsHeader: "Métricas de Avaliação de RI",
+      metricsUnavailable: "Métricas indisponíveis para esta consulta",
     },
     resultCard: { coverAlt: "Capa de", score: "pontuacao" },
     notFound: { message: "Ops! Pagina nao encontrada", home: "Voltar para o inicio" },

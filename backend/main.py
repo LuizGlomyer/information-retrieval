@@ -9,6 +9,7 @@ from elasticsearch.exceptions import ConnectionError
 
 from config import config
 from services.index_manager import IndexManager
+from services.search import SearchService
 from routes import router
 
 
@@ -61,6 +62,9 @@ def create_app() -> FastAPI:
     indices_ok = IndexManager.initialize_indices(es_client)
     if not indices_ok:
         print("⚠ Warning: Failed to initialize some indices")
+
+    # Pre-load embedding and reranker models at startup
+    SearchService.initialize_models()
 
     # Store client in app state for use in endpoints
     app.state.es_client = es_client
