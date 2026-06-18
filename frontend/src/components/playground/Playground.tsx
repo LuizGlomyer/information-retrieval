@@ -152,16 +152,23 @@ export const Playground = () => {
               Opções de Busca
             </p>
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3">
-              <label className="relative inline-flex items-center cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-                <input
-                  type="checkbox"
-                  checked={rerank}
-                  onChange={(e) => handleRerankToggle(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-8 h-4 bg-muted rounded-full relative transition-colors mr-2 border border-border/80 peer-checked:bg-foreground after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-foreground peer-checked:after:bg-background after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-4"></div>
-                <span>{t.playground.rerankLabel}</span>
-              </label>
+              <div className="flex flex-col gap-1.5">
+                <label className="relative inline-flex items-center cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={rerank}
+                    onChange={(e) => handleRerankToggle(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-8 h-4 bg-muted rounded-full relative transition-colors mr-2 border border-border/80 peer-checked:bg-foreground after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-foreground peer-checked:after:bg-background after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-4"></div>
+                  <span>{t.playground.rerankLabel}</span>
+                </label>
+                {rerank && (
+                  <span className="pl-10 font-mono text-[9px] text-muted-foreground/80 leading-none">
+                    Model: <code className="bg-muted px-1 py-0.5 rounded text-[8px]">BAAI/bge-reranker-base</code>
+                  </span>
+                )}
+              </div>
 
               <label className="relative inline-flex items-center cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
                 <input
@@ -276,6 +283,12 @@ export const Playground = () => {
                               </span>
                             </div>
                             <div className="rounded border border-border/50 bg-card p-1.5 text-center">
+                              <span className="text-[9px] text-muted-foreground block">P@5</span>
+                              <span className="text-foreground font-semibold">
+                                {(algo.metrics.precision_at_5 ?? 0).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="rounded border border-border/50 bg-card p-1.5 text-center">
                               <span className="text-[9px] text-muted-foreground block">MAP</span>
                               <span className="text-foreground font-semibold">
                                 {algo.metrics.mean_average_precision.toFixed(2)}
@@ -288,9 +301,27 @@ export const Playground = () => {
                               </span>
                             </div>
                             <div className="rounded border border-border/50 bg-card p-1.5 text-center">
-                              <span className="text-[9px] text-muted-foreground block">NDCG@10</span>
+                              <span className="text-[9px] text-muted-foreground block">F1@1</span>
                               <span className="text-foreground font-semibold">
-                                {(algo.metrics.ndcg_at_10 ?? 0).toFixed(2)}
+                                {algo.metrics.f1_at_1.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="rounded border border-border/50 bg-card p-1.5 text-center">
+                              <span className="text-[9px] text-muted-foreground block">F1@5</span>
+                              <span className="text-foreground font-semibold">
+                                {(algo.metrics.f1_at_5 ?? 0).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="rounded border border-border/50 bg-card p-1.5 text-center">
+                              <span className="text-[9px] text-muted-foreground block">NDCG@1</span>
+                              <span className="text-foreground font-semibold">
+                                {algo.metrics.ndcg_at_1.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="rounded border border-border/50 bg-card p-1.5 text-center">
+                              <span className="text-[9px] text-muted-foreground block">NDCG@5</span>
+                              <span className="text-foreground font-semibold">
+                                {(algo.metrics.ndcg_at_5 ?? 0).toFixed(2)}
                               </span>
                             </div>
                           </div>

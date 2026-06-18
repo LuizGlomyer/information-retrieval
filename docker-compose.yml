@@ -49,8 +49,8 @@ services:
       - FRONTEND_PORT=${FRONTEND_PORT:-8090}
       - HF_TOKEN=${HF_TOKEN}
       - HF_HOME=/root/.cache/huggingface
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      # Monta o CSV de ingestão dentro do container
       - ./ingestion/game_dataset_cleaned.csv:/app/data/game_dataset_cleaned.csv:ro
       - hf_cache:/root/.cache/huggingface
     ports:

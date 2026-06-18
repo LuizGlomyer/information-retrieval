@@ -37,9 +37,9 @@ export const translations = {
       eyebrow: "Information Retrieval - Vol. 01",
       titlePrefix: "Searching",
       titleEmphasis: "games",
-      titleSuffix: "measured five ways.",
+      titleSuffix: "across multiple algorithms.",
       lede:
-        "A study in lexical and neural retrieval over a structured English-language game catalog. We index, weight, embed and fine-tune - then put each model on the same stand and let the metrics talk.",
+        "A study in lexical and neural retrieval over a structured English-language game catalog. We index, weight, embed and rerank - then put each model on the same stand and let the metrics talk.",
       primaryCta: "Open the playground",
       secondaryCta: "Read the method",
       stats: {
@@ -77,7 +77,7 @@ export const translations = {
           output: "Latency: ~120 ms",
         },
         {
-          title: "Vector Space Model - SVM",
+          title: "Vector Space Model - VSM",
           desc:
             "Scripted Similarity vector space model based on TF-IDF term frequency and cosine similarity. It ranks documents using custom similarity scoring directly inside Elasticsearch.",
           output: "Latency: ~110 ms",
@@ -127,7 +127,7 @@ export const translations = {
         svm: {
           tagline: "Vector Space Model",
           description:
-            "Support Vector Model scoring based on TF-IDF term frequency and cosine similarity. Provides an alternative mathematical ranking perspective.",
+            "Vector Space Model scoring based on TF-IDF term frequency and cosine similarity. Provides an alternative mathematical ranking perspective.",
           techniques: ["TF-IDF", "Cosine similarity", "Vector space"],
         },
       } satisfies Record<"bm25" | "bm25_hybrid" | "bert" | "svm", { tagline: string; description: string; techniques: string[] }>,
@@ -147,6 +147,9 @@ export const translations = {
       allMetricsDescription: "Each line is a model. Reads model strengths across the metric spectrum.",
       modelColumn: "Model",
       bestNote: "Best per column. All scores in [0, 1].",
+      rankingMode: "Ranking Mode:",
+      modeNormal: "Normal",
+      modeRerank: "Rerank (Cross-Encoder)",
     },
     playground: {
       heading: {
@@ -161,6 +164,22 @@ export const translations = {
         "combat that is mortal",
         "spartan warrior protagonist",
         "basketball with good movement",
+        "zelda games",
+        "zombie survival",
+        "racing simulator",
+        "space exploration",
+        "world war",
+        "cyberpunk rpg",
+        "detective mystery",
+        "medieval strategy",
+        "anime fight",
+        "coop puzzle",
+        "soccer manager",
+        "dungeon crawler",
+        "hack and slash",
+        "skate boarding",
+        "psychological horror",
+        "stealth assassin",
       ],
       placeholder: "e.g. super mario...",
       searchLabel: "Search query",
@@ -203,9 +222,9 @@ export const translations = {
       eyebrow: "Recuperação de Informação - Vol. 01",
       titlePrefix: "Buscando",
       titleEmphasis: "jogos",
-      titleSuffix: "medidos de cinco formas.",
+      titleSuffix: "através de múltiplos algoritmos.",
       lede:
-        "Um estudo de recuperação lexical e neural em um catálogo estruturado de jogos em inglês. Indexamos, ponderamos, geramos embeddings e fazemos fine-tuning - depois colocamos cada modelo na mesma bancada e deixamos as metricas falarem.",
+        "Um estudo de recuperação lexical e neural em um catálogo estruturado de jogos em inglês. Indexamos, ponderamos, geramos embeddings e aplicamos re-ranqueamento (rerank) - depois colocamos cada modelo na mesma bancada e deixamos as métricas falarem.",
       primaryCta: "Abrir o playground",
       secondaryCta: "Ler o método",
       stats: {
@@ -219,9 +238,9 @@ export const translations = {
     pipeline: {
       heading: {
         eyebrow: "01 - Método",
-        title: "Seis etapas do catálogo bruto as respostas ranqueadas",
+        title: "Seis etapas do catálogo bruto às respostas ranqueadas",
         lede:
-          "Cada etapa e versionada e avaliada de forma independente. O mesmo pré-processamento e os mesmos filtros alimentam todos os rankers, então comparamos os rankers em si.",
+          "Cada etapa é versionada e avaliada de forma independente. O mesmo pré-processamento e os mesmos filtros alimentam todos os rankers, então comparamos os rankers em si.",
       },
       steps: [
         {
@@ -233,17 +252,17 @@ export const translations = {
         {
           title: "Pré-processamento de texto",
           desc:
-            "Lowercase, tokenizacao por espacos e remocao de stopwords em inglês. Trabalhos futuros: lematização e reconhecimento de entidades para franquias.",
+            "Lowercase, tokenização por espaços e remoção de stopwords em inglês. Trabalhos futuros: lematização e reconhecimento de entidades para franquias.",
           output: "Média de 84 tokens / doc",
         },
         {
           title: "Recuperação lexical - BM25",
           desc:
-            "Consultas multi-match com pesos opcionais por campo. Captura correspondencias exatas e morfologicas; serve como baseline forte.",
+            "Consultas multi-match com pesos opcionais por campo. Captura correspondências exatas e morfológicas; serve como baseline forte.",
           output: "Latência: ~120 ms",
         },
         {
-          title: "Modelo de Vetor Espacial - SVM",
+          title: "Modelo de Vetor Espacial - VSM",
           desc:
             "Ranqueamento baseado em frequência de termos TF-IDF e similaridade de cosseno (Vector Space Model). Executa uma similaridade roteirizada customizada diretamente no Elasticsearch.",
           output: "Latência: ~110 ms",
@@ -251,13 +270,13 @@ export const translations = {
         {
           title: "Re-ranking neural - BERT",
           desc:
-            "O cross-encoder le (consulta, documento) em conjunto. A variante fine-tuned se adapta ao vocabulário de games e a rótulos editoriais de relevância.",
+            "O cross-encoder lê (consulta, documento) em conjunto. Utiliza o modelo BAAI/bge-reranker-base do Hugging Face para pontuar a relevância.",
           output: "Latência: ~480 ms",
         },
         {
-          title: "Esteira de avaliacao",
+          title: "Esteira de avaliação",
           desc:
-            "Cada modelo e pontuado no mesmo conjunto de consultas rotuladas usando nove metricas de RI. Os resultados sao versionados por experimento.",
+            "Cada modelo é pontuado no mesmo conjunto de consultas rotuladas usando nove métricas de RI. Os resultados são versionados por experimento.",
           output: "9 métricas - 4 modelos",
         },
       ],
@@ -267,16 +286,16 @@ export const translations = {
         eyebrow: "02 - Modelos",
         title: "Quatro rankers, duas famílias",
         lede:
-          "Modelos lexicais sao rapidos, transparentes e rigidos com vocabulario. Modelos neurais sao mais lentos, opacos e tolerantes. Usamos os dois e deixamos as consultas decidirem.",
+          "Modelos lexicais são rápidos, transparentes e rígidos com vocabulário. Modelos neurais são mais lentos, opacos e tolerantes. Usamos os dois e deixamos as consultas decidirem.",
       },
       families: { lexical: "lexical", neural: "neural" },
-      statuses: { stable: "estavel", experimental: "experimental", planned: "planejado" },
+      statuses: { stable: "estável", experimental: "experimental", planned: "planejado" },
       copy: {
         bm25: {
           tagline: "Baseline lexical nativo",
           description:
-            "Ranking nativo do Elasticsearch. Frequencia do termo, frequencia inversa do documento e normalizacao de tamanho em cada campo pesquisavel.",
-          techniques: ["TF-IDF", "Normalizacao", "Multi-match"],
+            "Ranking nativo do Elasticsearch. Frequência do termo, frequência inversa do documento e normalização de tamanho em cada campo pesquisável.",
+          techniques: ["TF-IDF", "Normalização", "Multi-match"],
         },
         bm25_hybrid: {
           tagline: "Busca lexical e semântica",
@@ -300,26 +319,30 @@ export const translations = {
     },
     metrics: {
       heading: {
-        eyebrow: "03 - Avaliacao",
+        eyebrow: "03 - Avaliação",
         title: "Lado a lado, nas mesmas perguntas",
         lede:
-          "Cada modelo e avaliado no mesmo conjunto de consultas rotuladas. Reportamos nove metricas padrao de RI - precision at k, recall, MAP, F1 e NDCG em tres cortes.",
+          "Cada modelo é avaliado no mesmo conjunto de consultas rotuladas. Reportamos nove métricas padrão de RI - precision at k, recall, MAP, F1 e NDCG em três cortes.",
       },
       compareOn: "Comparar por:",
-      higherIsBetter: "maior e melhor",
-      selectedMetricDescription: "Pontuacao por modelo na metrica selecionada.",
-      allMetricsTitle: "Todas as metricas, todos os modelos",
+      higherIsBetter: "maior é melhor",
+      selectedMetricDescription: "Pontuação por modelo na métrica selecionada.",
+      allMetricsTitle: "Todas as métricas, todos os modelos",
       profile: "perfil",
-      allMetricsDescription: "Cada linha e um modelo. Mostra os pontos fortes ao longo do espectro de metricas.",
+      allMetricsDescriptionNormal: "Cada linha é um modelo. Mostra os pontos fortes ao longo do espectro de métricas (ranqueamento base).",
+      allMetricsDescriptionRerank: "Avaliado usando o Cross-Encoder BAAI/bge-reranker-base do Hugging Face para reordenar os primeiros candidatos.",
       modelColumn: "Modelo",
-      bestNote: "Melhor por coluna. Todas as pontuacoes em [0, 1].",
+      bestNote: "Melhor por coluna. Todas as pontuações em [0, 1].",
+      rankingMode: "Modo de Ranqueamento:",
+      modeNormal: "Normal",
+      modeRerank: "Rerank (Cross-Encoder)",
     },
     playground: {
       heading: {
         eyebrow: "04 - Playground",
         title: "Execute uma busca. Veja os rankers discordarem.",
         lede:
-          "Digite uma busca e veja como cada modelo ranqueia o catalogo. Alterne entre ver um modelo em detalhe ou comparar varios lado a lado.",
+          "Digite uma busca e veja como cada modelo ranqueia o catálogo. Alterne entre ver um modelo em detalhe ou comparar vários lado a lado.",
       },
       defaultQuery: "super mario",
       suggestions: [
@@ -327,30 +350,46 @@ export const translations = {
         "combat that is mortal",
         "spartan warrior protagonist",
         "basketball with good movement",
+        "zelda games",
+        "zombie survival",
+        "racing simulator",
+        "space exploration",
+        "world war",
+        "cyberpunk rpg",
+        "detective mystery",
+        "medieval strategy",
+        "anime fight",
+        "coop puzzle",
+        "soccer manager",
+        "dungeon crawler",
+        "hack and slash",
+        "skate boarding",
+        "psychological horror",
+        "stealth assassin",
       ],
       placeholder: "ex.: super mario...",
       searchLabel: "Consulta de busca",
       search: "Buscar",
       try: "teste:",
-      viewMode: "Modo de visualizacao",
-      single: "Unico",
+      viewMode: "Modo de visualização",
+      single: "Único",
       compare: "Comparar",
       model: "Modelo",
       modelsToCompare: "Modelos para comparar",
       hits: "resultados",
       milliseconds: "ms",
       noResults: "Sem resultados.",
-      emptyTitle: "Pronto quando voce estiver.",
+      emptyTitle: "Pronto quando você estiver.",
       emptyDescription:
         "Busque acima ou escolha uma consulta sugerida para ver como os rankers respondem.",
-      runDefault: "Executar busca padrao",
+      runDefault: "Executar busca padrão",
       rerankLabel: "Re-ranquear com Cross-Encoder",
       metricsLabel: "Calcular Métricas de RI",
       metricsHeader: "Métricas de Avaliação de RI",
       metricsUnavailable: "Métricas indisponíveis para esta consulta",
     },
-    resultCard: { coverAlt: "Capa de", score: "pontuacao" },
-    notFound: { message: "Ops! Pagina nao encontrada", home: "Voltar para o inicio" },
+    resultCard: { coverAlt: "Capa de", score: "pontuação" },
+    notFound: { message: "Ops! Página não encontrada", home: "Voltar para o início" },
   },
 } as const;
 

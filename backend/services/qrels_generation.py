@@ -11,14 +11,51 @@ from google.genai import types
 
 from config import config
 from models.search import Bm25IdNameSearchRequest, GenerateQrelsRequest, GenerateQrelsResponse
-from services.qrels import QREL_SUPER_MARIO, QREL_MORTAL_KOMBAT, QREL_SPARTAN_WARRIOR_PROTAGONIST, QREL_BASKETBALL_GOOD_MOVEMENT
+from services.qrels import (
+    QREL_SUPER_MARIO,
+    QREL_MORTAL_KOMBAT,
+    QREL_SPARTAN_WARRIOR_PROTAGONIST,
+    QREL_BASKETBALL_GOOD_MOVEMENT,
+    QREL_ZELDA_GAMES,
+    QREL_ZOMBIE_SURVIVAL,
+    QREL_RACING_SIMULATOR,
+    QREL_SPACE_EXPLORATION,
+    QREL_WORLD_WAR,
+    QREL_CYBERPUNK_RPG,
+    QREL_DETECTIVE_MYSTERY,
+    QREL_MEDIEVAL_STRATEGY,
+    QREL_ANIME_FIGHT,
+    QREL_COOP_PUZZLE,
+    QREL_SOCCER_MANAGER,
+    QREL_DUNGEON_CRAWLER,
+    QREL_HACK_AND_SLASH,
+    QREL_SKATE_BOARDING,
+    QREL_PSYCHOLOGICAL_HORROR,
+    QREL_STEALTH_ASSASSIN,
+)
 
 
 QUERY_QRELS = {
     "super mario": QREL_SUPER_MARIO,
-    "combat that is mortal": QREL_MORTAL_KOMBAT, 
+    "combat that is mortal": QREL_MORTAL_KOMBAT,
     "spartan warrior protagonist": QREL_SPARTAN_WARRIOR_PROTAGONIST,
     "basketball with good movement": QREL_BASKETBALL_GOOD_MOVEMENT,
+    "zelda games": QREL_ZELDA_GAMES,
+    "zombie survival": QREL_ZOMBIE_SURVIVAL,
+    "racing simulator": QREL_RACING_SIMULATOR,
+    "space exploration": QREL_SPACE_EXPLORATION,
+    "world war": QREL_WORLD_WAR,
+    "cyberpunk rpg": QREL_CYBERPUNK_RPG,
+    "detective mystery": QREL_DETECTIVE_MYSTERY,
+    "medieval strategy": QREL_MEDIEVAL_STRATEGY,
+    "anime fight": QREL_ANIME_FIGHT,
+    "coop puzzle": QREL_COOP_PUZZLE,
+    "soccer manager": QREL_SOCCER_MANAGER,
+    "dungeon crawler": QREL_DUNGEON_CRAWLER,
+    "hack and slash": QREL_HACK_AND_SLASH,
+    "skate boarding": QREL_SKATE_BOARDING,
+    "psychological horror": QREL_PSYCHOLOGICAL_HORROR,
+    "stealth assassin": QREL_STEALTH_ASSASSIN,
 }
 
 
