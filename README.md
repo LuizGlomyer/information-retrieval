@@ -1,6 +1,22 @@
 # Game Information Retrieval Lab
 
-An advanced, playground-driven Information Retrieval system over a structured English-language game catalog. The project compares lexical and neural ranking models: **BM25**, **SVM (TF-IDF + Cosine Similarity)**, and **BERT Cross-Encoder**.
+An advanced, playground-driven Information Retrieval system over a structured English-language game catalog. The project implements and compares four search methods: **BM25**, **BM25 Hybrid**, **BERT**, and **VSM** (Vector Space Model), with optional cross-encoder reranking. It uses **bge-en-small** for embeddings, **bge-reranker-base** for cross-encoding, **ranx** for retrieval metrics, and **Google Gemini API (Flash 3.5)** for qrels generation.
+
+---
+
+## Search Methods & Models
+
+### Search Methods
+- **BM25**: Probabilistic lexical ranking using term frequency and inverse document frequency
+- **BM25 Hybrid**: Combines BM25 with dense retrieval for improved recall
+- **BERT**: Dense neural retrieval using transformer-based embeddings
+- **VSM**: Vector Space Model with semantic similarity matching
+
+### Models & Tools
+- **Embeddings**: `bge-en-small` — Fast, efficient embeddings for semantic search
+- **Cross-Encoder Reranker**: `bge-reranker-base` — Optional second-stage reranking to refine results from any search method
+- **Evaluation**: `ranx` — Retrieval metrics computation (MRR, NDCG, MAP, etc.)
+- **Qrels Generation**: Google Gemini API (Flash 3.5) — Automated relevance judgment generation for evaluation
 
 ---
 
